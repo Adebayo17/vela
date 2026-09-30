@@ -18,8 +18,8 @@ import pytest
 import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from cnn import conv2d, conv2d_fast, relu, maxpool2d, fully_connected, softmax
-from conftest import requirement
+from src.cnn import conv2d, conv2d_fast, relu, maxpool2d, fully_connected, softmax
+from tests.conftest import requirement
 
 
 # ── conv2d ───────────────────────────────────────────────────────────────────

@@ -81,7 +81,7 @@ ARCH = {
     "local3/weights": {
         "tf_shape":     (180, 10),                      # (n_in, n_out) TensorFlow
         "out_shape":    (10, 180),                      # (n_out, n_in) for W @ x
-        "transpose":    None                            # simple .T
+        "transpose":    (1, 0)                          # simple .T
     },
 }
 
@@ -274,8 +274,8 @@ def print_weights_summary(weights: dict) -> None:
 if __name__ == "__main__":
     import sys
  
-    WEIGHTS_FILE = "/mnt/user-data/uploads/CNN_coeff_3x3.txt"
-    META_FILE    = "/mnt/user-data/uploads/batches_meta.txt"
+    WEIGHTS_FILE = "../../../data/CNN_coeff_3x3.txt"
+    META_FILE    = "../../../data/cifar-10-batches-bin/batches.meta.txt"
  
     print("=== weights_loader.py self-test ===\n")
  
