@@ -1,5 +1,5 @@
 """
-test_pipeline.py — Integration tests for the full CNN forward pass.
+test_cnn.py — Integration tests for the full CNN forward pass.
 
 Requirements covered:
   VELA-FR-004 : cnn_forward() returns (probs array of shape (10,), pred int in [0,9])

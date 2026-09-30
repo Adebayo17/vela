@@ -1,13 +1,13 @@
 """
-top.py — Point d'entrée : validation du CNN CIFAR-10
+main.py — Point d'entrée : validation du CNN CIFAR-10
 
 Usage :
-    python top.py                             # 100 images, chemins par défaut
-    python top.py --images 1000               # 1000 images
-    python top.py --images 0                  # toutes les images (10000)
-    python top.py --verbose                   # affiche les détails de chaque image
-    python top.py --single 42                 # inférence sur l'image n°42 uniquement
-    python top.py --data /chemin/vers/cifar10 # chemin personnalisé
+    python main.py                             # 100 images, chemins par défaut
+    python main.py --images 1000               # 1000 images
+    python main.py --images 0                  # toutes les images (10000)
+    python main.py --verbose                   # affiche les détails de chaque image
+    python main.py --single 42                 # inférence sur l'image n°42 uniquement
+    python main.py --data /chemin/vers/cifar10 # chemin personnalisé
 """
 
 import argparse
@@ -23,8 +23,8 @@ from cnn            import cnn_forward
 
 
 # ─── Chemins par défaut ──────────────────────────────────────────────────────
-DEFAULT_DATA_DIR    = "./cifar10_data/cifar-10-batches-bin"
-DEFAULT_WEIGHTS_FILE = "./CNN_coeff_3x3.txt"
+DEFAULT_DATA_DIR    = "../data/cifar-10-batches-bin"
+DEFAULT_WEIGHTS_FILE = "../data/CNN_coeff_3x3.txt"
 DEFAULT_N_IMAGES    = 100
 
 

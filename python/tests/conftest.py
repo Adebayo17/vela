@@ -64,7 +64,7 @@ def data_dir():
     """
     path = os.environ.get(
         "VELA_DATA_DIR",
-        os.path.join(os.path.dirname(__file__), "../../../data/cifar-10-batches-bin")
+        os.path.join(os.path.dirname(__file__), "../../data/cifar-10-batches-bin")
     )
     return os.path.abspath(path)
 
@@ -84,7 +84,7 @@ def weights_file():
     """
     path = os.environ.get(
         "VELA_WEIGHTS_FILE",
-        os.path.join(os.path.dirname(__file__), "../../../data/CNN_coeff_3x3.txt")
+        os.path.join(os.path.dirname(__file__), "../../data/CNN_coeff_3x3.txt")
     )
     return os.path.abspath(path)
 

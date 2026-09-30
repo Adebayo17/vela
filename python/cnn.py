@@ -18,6 +18,7 @@ Architecture CNN basique CIFAR-10 :
 """
 
 import numpy as np
+import math
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -141,20 +142,24 @@ def relu(fmap):
 
 def maxpool2d(fmap, pool_size=3, stride=2):
     """
-    MaxPool 2D multi-canal.
-
-    Args:
-        fmap      : np.ndarray (C, H, W)
-        pool_size : taille de la fenêtre (carré, défaut=3)
-        stride    : pas de déplacement (défaut=2)
-
-    Retourne :
-        np.ndarray (C, H_out, W_out)
-        H_out = (H - pool_size) // stride + 1
+    MaxPool 2D multi-canal avec padding SAME (comportement TensorFlow).
     """
     c, h, w = fmap.shape
-    h_out = (h - pool_size) // stride + 1
-    w_out = (w - pool_size) // stride + 1
+    h_out = math.ceil(h / stride)
+    w_out = math.ceil(w / stride)
+
+    # Padding nécessaire pour couvrir toutes les positions
+    pad_h = max((h_out - 1) * stride + pool_size - h, 0)
+    pad_w = max((w_out - 1) * stride + pool_size - w, 0)
+
+    if pad_h > 0 or pad_w > 0:
+        # Padding avec -inf pour ne pas affecter le max
+        fmap = np.pad(
+            fmap,
+            ((0, 0), (0, pad_h), (0, pad_w)),
+            mode="constant",
+            constant_values=-np.inf
+        )
 
     output = np.zeros((c, h_out, w_out), dtype=np.float32)
 
