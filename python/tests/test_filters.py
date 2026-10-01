@@ -7,7 +7,7 @@ to validate each filter independently of CIFAR-10 data.
 
 import numpy as np
 import pytest
-from conftest import requirement
+from .helpers import requirement
 
 
 # ─── Grayscale ───────────────────────────────────────────────────────────────

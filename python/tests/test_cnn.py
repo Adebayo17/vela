@@ -16,7 +16,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from cnn import cnn_forward
 from data_loader import preprocess, CIFAR10_CLASSES
-from conftest import requirement
+from .helpers import requirement
 
 
 class TestCnnForwardOutputContract:
@@ -107,7 +107,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from cnn import cnn_forward
 from data_loader import load_dataset, CIFAR10_CLASSES
-from conftest import requirement
+from .helpers import requirement
 
 
 class TestSystemAccuracy:

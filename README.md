@@ -167,9 +167,9 @@ make test-all
 - [x] `cnn.py` — All layers (conv2d, relu, maxpool, fc, softmax) + forward pass
 - [x] `main.py` — CLI with single/batch/confusion modes
 - [x] Test suite with `@requirement` traceability
-- [ ] Fix MaxPool SAME padding (TF `ceil(H/stride)` behavior)
-- [ ] Pass all unit tests on VM
-- [ ] Validate accuracy >= 60% on 1000 images
+- [x] Fix MaxPool SAME padding (TF `ceil(H/stride)` behavior)
+- [x] Pass all unit tests on VM
+- [x] Validate accuracy >= 60% on 1000 images
 
 ### Phase 1b — Python golden model: image filters
 - [ ] `filters.py` — Grayscale, Sobel, Gaussian, Median, Threshold

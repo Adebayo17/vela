@@ -274,8 +274,8 @@ def print_weights_summary(weights: dict) -> None:
 if __name__ == "__main__":
     import sys
  
-    WEIGHTS_FILE = "../../../data/CNN_coeff_3x3.txt"
-    META_FILE    = "../../../data/cifar-10-batches-bin/batches.meta.txt"
+    WEIGHTS_FILE = "../../data/CNN_coeff_3x3.txt"
+    META_FILE    = "../../data/cifar-10-batches-bin/batches.meta.txt"
  
     print("=== weights_loader.py self-test ===\n")
  
