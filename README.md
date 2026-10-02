@@ -172,8 +172,8 @@ make test-all
 - [x] Validate accuracy >= 60% on 1000 images
 
 ### Phase 1b — Python golden model: image filters
-- [ ] `filters.py` — Grayscale, Sobel, Gaussian, Median, Threshold
-- [ ] `test_filters.py` — Unit tests (synthetic images, known outputs)
+- [x] `filters.py` — Grayscale, Sobel, Gaussian, Median, Threshold
+- [x] `test_filters.py` — Unit tests (synthetic images, known outputs)
 - [ ] Visual validation on sample CIFAR-10 images
 
 ### Phase 2a — Verilog RTL: image filters

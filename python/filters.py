@@ -24,8 +24,10 @@ def grayscale(image):
     Returns:
         np.ndarray (1, H, W) float32, luminance
     """
-    # TODO: Phase 1b
-    raise NotImplementedError("grayscale — à implémenter")
+    r, g, b = image[0], image[1], image[2]
+    y = (0.299 * r) + (0.587 * g) + (0.114 * b)
+
+    return y[np.newaxis, :, :].astype(np.float32)   # (1, H, W) for CHW
 
 
 def sobel(image):
@@ -42,8 +44,30 @@ def sobel(image):
     Returns:
         np.ndarray (1, H, W) float32, edge magnitude
     """
-    # TODO: Phase 1b
-    raise NotImplementedError("sobel — à implémenter")
+    if image.shape[0] != 1:
+        image = grayscale(image)
+
+    gx_kernel = np.array([[-1, 0, 1],
+                          [-2, 0, 2],
+                          [-1, 0, 1]], dtype=np.float32)
+
+    gy_kernel = np.array([[-1, -2, -1],
+                          [ 0,  0,  0],
+                          [ 1,  2,  1]], dtype=np.float32)
+
+    _, h, w = image.shape
+    padded = np.pad(image, ((0, 0), (1, 1), (1, 1)),
+                    mode="constant", constant_values=0)
+    output = np.zeros_like(image)
+
+    for i in range(h):
+        for j in range(w):
+            window = padded[0, i:i+3, j:j+3]
+            gx = (window * gx_kernel).sum()
+            gy = (window * gy_kernel).sum()
+            output[0, i, j] = abs(gx) + abs(gy)
+
+    return output.astype(np.float32)
 
 
 def gaussian(image, kernel=None):
@@ -58,8 +82,24 @@ def gaussian(image, kernel=None):
     Returns:
         np.ndarray (C, H, W) float32
     """
-    # TODO: Phase 1b
-    raise NotImplementedError("gaussian — à implémenter")
+    if kernel is None:
+        kernel = np.array([[1, 2, 1],
+                           [2, 4, 2],
+                           [1, 2, 1]], dtype=np.float32) / 16.0
+
+    c, h, w = image.shape
+    padded = np.pad(image, ((0, 0), (1, 1), (1, 1)),
+                    mode="constant", constant_values=0)
+
+    output = np.zeros_like(image)
+
+    for i in range(h):
+        for j in range(w):
+            window = padded[:, i:i+3, j:j+3]    # (C, 3, 3)
+            output[:, i, j] = (window * kernel).sum(axis=(1, 2))
+    
+    return output.astype(np.float32)
+
 
 
 def median(image, kernel_size=3):
@@ -74,8 +114,19 @@ def median(image, kernel_size=3):
     Returns:
         np.ndarray (C, H, W) float32
     """
-    # TODO: Phase 1b
-    raise NotImplementedError("median — à implémenter")
+    c, h, w = image.shape
+    pad = kernel_size // 2
+    padded = np.pad(image, ((0, 0), (pad, pad), (pad, pad)),
+                    mode="constant", constant_values=0)
+    output = np.zeros_like(image)
+
+    for ch in range(c):
+        for i in range(h):
+            for j in range(w):
+                window = padded[ch, i:i+kernel_size, j:j+kernel_size]
+                output[ch, i, j] = np.median(window)
+
+    return output.astype(np.float32)
 
 
 def threshold(image, thresh=0.5):
@@ -90,5 +141,5 @@ def threshold(image, thresh=0.5):
     Returns:
         np.ndarray (1, H, W) float32, image binaire
     """
-    # TODO: Phase 1b
-    raise NotImplementedError("threshold — à implémenter")
+    result = np.where(image > thresh, 1.0, 0.0)
+    return result.astype(np.float32)
