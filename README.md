@@ -174,7 +174,7 @@ make test-all
 ### Phase 1b — Python golden model: image filters
 - [x] `filters.py` — Grayscale, Sobel, Gaussian, Median, Threshold
 - [x] `test_filters.py` — Unit tests (synthetic images, known outputs)
-- [ ] Visual validation on sample CIFAR-10 images
+- [x] Visual validation on sample CIFAR-10 images
 
 ### Phase 2a — Verilog RTL: image filters
 - [ ] `grayscale.v` — Fixed-point RGB to luminance

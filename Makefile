@@ -1,6 +1,14 @@
 PYTHON := python3
 
-PYTHON := python3
+# ─── Setup ───────────────────────────────────────────────────────────────────
+
+setup:
+	python3 -m venv .venv
+	. .venv/bin/activate && pip install -r requirements.txt
+	@echo ""
+	@echo "Venv ready. Run: source .venv/bin/activate"
+	@echo "If tkinter is missing: sudo apt install python3-tk"
+
 
 # ─── Tests principaux ────────────────────────────────────────────────────────
 
@@ -42,6 +50,15 @@ test-threshold:
 
 run:
 	cd python && $(PYTHON) main.py --single 0
+
+
+# ─── GUI ─────────────────────────────────────────────────────────────────────
+
+gui:
+	cd python && $(PYTHON) gui_simulator.py
+
+gui-small:
+	cd python && $(PYTHON) gui_simulator.py --images 20
 
 
 # ─── Couverture ──────────────────────────────────────────────────────────────
