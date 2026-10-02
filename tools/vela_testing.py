@@ -1,5 +1,11 @@
 """
-helpers.py — Importable test utilities.
+vela_testing.py — Shared test utilities (golden model + RTL verification).
+
+Usage:
+    from vela_testing import requirement
+
+    @requirement("VELA-FR-007")
+    def test_something(): ...
 """
 
 import pytest

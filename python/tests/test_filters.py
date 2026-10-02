@@ -7,7 +7,7 @@ to validate each filter independently of CIFAR-10 data.
 
 import numpy as np
 import pytest
-from .helpers import requirement
+from vela_testing import requirement
 from filters import *
 
 

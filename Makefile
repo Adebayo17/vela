@@ -13,37 +13,60 @@ setup:
 # ─── Tests principaux ────────────────────────────────────────────────────────
 
 test:
-	cd python && $(PYTHON) -m pytest tests/ -v --tb=short -m "not slow" --disable-warnings
+	$(PYTHON) -m pytest -v --tb=short -m "not slow" --disable-warnings
 
 test-all:
-	cd python && $(PYTHON) -m pytest tests/ -v --tb=short --disable-warnings
+	$(PYTHON) -m pytest -v --tb=short --disable-warnings
 
 
 # ─── Tests par module ────────────────────────────────────────────────────────
 
 test-cnn:
-	cd python && $(PYTHON) -m pytest tests/test_cnn.py -v --tb=short -m "not slow"
+	$(PYTHON) -m pytest python/tests/test_cnn.py -v --tb=short -m "not slow"
 
 test-filters:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py -v --tb=short
 
 
 # ─── Tests filtre par filtre ─────────────────────────────────────────────────
 
 test-grayscale:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py::TestGrayscale -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py::TestGrayscale -v --tb=short
 
 test-sobel:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py::TestSobel -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py::TestSobel -v --tb=short
 
 test-gaussian:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py::TestGaussian -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py::TestGaussian -v --tb=short
 
 test-median:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py::TestMedian -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py::TestMedian -v --tb=short
 
 test-threshold:
-	cd python && $(PYTHON) -m pytest tests/test_filters.py::TestThreshold -v --tb=short
+	$(PYTHON) -m pytest python/tests/test_filters.py::TestThreshold -v --tb=short
+
+
+# ─── RTL (Phase 2a) ──────────────────────────────────────────────────────────
+
+RTL_SRC := $(filter-out rtl/oled_controller.v rtl/spi_master.v,$(wildcard rtl/*.v))
+TRACE_REPORT := docs/requirement/traceability_report.md
+
+rtl-test:
+	$(PYTHON) -m pytest verif/tests -v --tb=short
+
+rtl-lint:
+	@for f in $(RTL_SRC); do \
+		grep -q "TODO: Phase 2a" $$f && continue; \
+		echo "lint $$f"; verilator --lint-only -Wall $$f || exit 1; \
+	done
+
+
+# ─── Traçabilité ─────────────────────────────────────────────────────────────
+
+trace:
+	$(PYTHON) tools/traceability_scanner.py --srs docs/requirement/requirements.md \
+		--tests python/tests verif/tests --source python verif/models \
+		--output $(TRACE_REPORT)
 
 
 # ─── Exécution ───────────────────────────────────────────────────────────────
@@ -64,7 +87,7 @@ gui-small:
 # ─── Couverture ──────────────────────────────────────────────────────────────
 
 coverage:
-	cd python && $(PYTHON) -m pytest tests/ -v --disable-warnings --cov=./ --cov-report=term-missing
+	$(PYTHON) -m pytest -v --disable-warnings --cov=python --cov=verif/models --cov-report=term-missing
 
 
 # ─── Nettoyage ───────────────────────────────────────────────────────────────
@@ -75,4 +98,6 @@ clean:
 	rm -rf python/.pytest_cache
 	rm -rf python/htmlcov
 	rm -rf python/coverage.xml
+	rm -rf .coverage htmlcov coverage.xml python/.coverage
 	rm -rf python/tests/__pycache__
+	rm -rf verif/tests/__pycache__ verif/models/__pycache__ tools/__pycache__

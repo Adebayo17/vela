@@ -95,11 +95,11 @@ vela/
 │   ├── data_loader.py          # CIFAR-10 binary reader + preprocessing
 │   ├── weights_loader.py       # TF weight file parser with CHW transposition
 │   ├── main.py                 # CLI entry point for CNN validation
-│   └── tests/                  # pytest test suite
-│       ├── conftest.py         # Fixtures and @requirement decorator
+│   └── tests/                  # Golden model tests
+│       ├── conftest.py         # Fixtures (data paths, weights, synthetic images)
 │       ├── test_cnn.py         # CNN unit + system tests
 │       └── test_filters.py     # Filter unit tests
-├── rtl/                        # Phase 2a — Verilog RTL (image filters + display)
+├── rtl/                        # Phase 2a — Synthesizable Verilog only (filters + display)
 │   ├── grayscale.v             # RGB to grayscale conversion
 │   ├── sobel_filter.v          # Sobel edge detection (3x3)
 │   ├── gaussian_filter.v       # Gaussian blur (3x3)
@@ -107,6 +107,13 @@ vela/
 │   ├── threshold.v             # Binary threshold
 │   ├── oled_controller.v       # SSD1331 OLED display driver
 │   └── spi_master.v            # SPI master for OLED communication
+├── verif/                      # RTL verification (co-simulation vs bit-exact models)
+│   ├── models/
+│   │   └── filters_hw.py       # Bit-exact integer models of the RTL filters
+│   ├── tb/                     # File-driven Verilog testbenches (tb_<module>.v)
+│   └── tests/
+│       ├── rtl_sim.py          # iverilog/vvp runner for file-driven testbenches
+│       └── test_rtl_*.py       # One co-simulation test file per RTL module
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_hw.cpp              # CNN accelerator (ap_fixed)
 │   ├── cnn_hw.h                # Interface & type definitions
@@ -116,7 +123,11 @@ vela/
 │   └── cifar-10-batches-bin/
 │       ├── test_batch.bin      # 10000 test images
 │       └── batches.meta.txt
+├── tools/
+│   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
+│   └── vela_testing.py         # Shared @requirement decorator for all test suites
 ├── docs/
+│   ├── requirement/            # Requirements (VELA-FR-xxx)
 │   └── TN/TN001.md            # Technical note: CHW vs HWC memory layouts
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
@@ -157,6 +168,13 @@ make test
 
 # All tests including accuracy validation (needs CIFAR-10 data)
 make test-all
+
+# RTL co-simulation vs bit-exact model (needs Icarus Verilog) + Verilator lint
+make rtl-test
+make rtl-lint
+
+# Requirements traceability matrix
+make trace
 ```
 
 ## Roadmap
@@ -177,12 +195,12 @@ make test-all
 - [x] Visual validation on sample CIFAR-10 images
 
 ### Phase 2a — Verilog RTL: image filters
-- [ ] `grayscale.v` — Fixed-point RGB to luminance
+- [x] `grayscale.v` — Fixed-point RGB to luminance
 - [ ] `sobel_filter.v` — 3x3 Sobel with line buffers
 - [ ] `gaussian_filter.v` — 3x3 Gaussian with line buffers
 - [ ] `median_filter.v` — 3x3 median (sorting network)
 - [ ] `threshold.v` — Comparator + binary output
-- [ ] Testbenches with Python golden model comparison
+- [ ] Testbenches with Python golden model comparison (infra + grayscale done: `make rtl-test`)
 - [ ] Synthesis in Vivado, resource/timing check
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)

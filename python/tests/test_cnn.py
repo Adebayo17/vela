@@ -11,12 +11,9 @@ They are skipped automatically if CNN_coeff_3x3.txt is not accessible.
 
 import numpy as np
 import pytest
-import sys, os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from cnn import cnn_forward
 from data_loader import preprocess, CIFAR10_CLASSES
-from .helpers import requirement
+from vela_testing import requirement
 
 
 class TestCnnForwardOutputContract:
@@ -102,12 +99,9 @@ Run explicitly with:
 
 import numpy as np
 import pytest
-import sys, os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from cnn import cnn_forward
 from data_loader import load_dataset, CIFAR10_CLASSES
-from .helpers import requirement
+from vela_testing import requirement
 
 
 class TestSystemAccuracy:
