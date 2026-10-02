@@ -105,6 +105,7 @@ vela/
 │   ├── gaussian_filter.v       # Gaussian blur (3x3)
 │   ├── median_filter.v         # Median filter (3x3)
 │   ├── threshold.v             # Binary threshold
+│   ├── window3x3.v             # 3x3 sliding window (line buffers) shared by 3x3 filters
 │   ├── oled_controller.v       # SSD1331 OLED display driver
 │   └── spi_master.v            # SPI master for OLED communication
 ├── verif/                      # RTL verification (co-simulation vs bit-exact models)
@@ -196,11 +197,12 @@ make trace
 
 ### Phase 2a — Verilog RTL: image filters
 - [x] `grayscale.v` — Fixed-point RGB to luminance
+- [x] `window3x3.v` — Shared 3x3 window generator (line buffers, zero padding, `ready_in` flush)
 - [ ] `sobel_filter.v` — 3x3 Sobel with line buffers
 - [ ] `gaussian_filter.v` — 3x3 Gaussian with line buffers
 - [ ] `median_filter.v` — 3x3 median (sorting network)
-- [ ] `threshold.v` — Comparator + binary output
-- [ ] Testbenches with Python golden model comparison (infra + grayscale done: `make rtl-test`)
+- [x] `threshold.v` — Comparator + binary output
+- [ ] Testbenches with Python golden model comparison (grayscale, threshold, window3x3 done: `make rtl-test`)
 - [ ] Synthesis in Vivado, resource/timing check
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)

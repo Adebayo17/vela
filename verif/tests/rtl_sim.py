@@ -37,12 +37,19 @@ def write_hex(path, words, width_bits):
 
 
 def read_hex(path):
-    """Read one hex word per line."""
+    """Read one hex word per line, as Python ints (any width)."""
     with open(path) as f:
-        return np.array([int(line, 16) for line in f if line.strip()], dtype=np.uint32)
+        return [int(line, 16) for line in f if line.strip()]
 
 
-def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0):
+def unpack_bytes(words, n_bytes):
+    """Split each word into n_bytes bytes, MSB first -> np.ndarray (len(words), n_bytes) uint8."""
+    return np.array([[(w >> (8 * (n_bytes - 1 - i))) & 0xFF for i in range(n_bytes)]
+                     for w in words], dtype=np.uint8)
+
+
+def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=None,
+                  out_width=8):
     """
     Compile and simulate a file-driven testbench.
 
@@ -53,8 +60,11 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0):
         in_width:  input word width in bits
         workdir:   pathlib.Path for temporary files (pytest tmp_path)
         seed:      random seed for valid_in gaps (0 = continuous stream)
+        params:    dict of testbench parameter overrides, e.g. {"THRESHOLD": 100}
+        out_width: output word width in bits
     Returns:
-        np.ndarray uint32 of output words
+        np.ndarray uint32 of output words if out_width <= 32,
+        else np.ndarray (N, out_width/8) uint8 (bytes MSB first)
     """
     in_words = list(in_words)
     in_file = workdir / "in.hex"
@@ -64,8 +74,9 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0):
     write_hex(in_file, in_words, in_width)
 
     files = [str(TB_DIR / f"{tb_name}.v")] + [str(RTL_DIR / s) for s in sources]
+    overrides = [f"-P{tb_name}.{k}={v}" for k, v in (params or {}).items()]
     subprocess.run(
-        [IVERILOG, "-g2012", "-Wall", "-s", tb_name, "-o", str(sim_bin)] + files,
+        [IVERILOG, "-g2012", "-Wall", "-s", tb_name, "-o", str(sim_bin)] + overrides + files,
         check=True, capture_output=True, text=True,
     )
 
@@ -77,4 +88,7 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0):
     assert "ERROR" not in result.stdout, result.stdout
     assert "DONE" in result.stdout, result.stdout
 
-    return read_hex(out_file)
+    words = read_hex(out_file)
+    if out_width <= 32:
+        return np.array(words, dtype=np.uint32)
+    return unpack_bytes(words, out_width // 8)

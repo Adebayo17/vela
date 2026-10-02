@@ -36,3 +36,38 @@ def grayscale_u8(image):
     rgb = image.astype(np.uint32)
     y = (GRAY_COEF_R * rgb[0] + GRAY_COEF_G * rgb[1] + GRAY_COEF_B * rgb[2] + GRAY_ROUND) >> 8
     return y[np.newaxis, :, :].astype(np.uint8)
+
+
+def threshold_u8(image, thresh=128):
+    """
+    Seuillage binaire, identique à rtl/threshold.v.
+
+    Y = 255 si pixel > thresh, sinon 0
+
+    Équivaut à filters.threshold(image / 255, thresh / 255) * 255.
+
+    Args:
+        image: np.ndarray (1, H, W) uint8
+        thresh: int [0, 255], paramètre THRESHOLD du module
+    Returns:
+        np.ndarray (1, H, W) uint8, valeurs 0 ou 255
+    """
+    return np.where(image > thresh, 255, 0).astype(np.uint8)
+
+
+def windows_3x3_u8(image):
+    """
+    Fenêtres 3x3 produites par rtl/window3x3.v, une par pixel (ordre raster).
+
+    Bords : voisins hors image = 0, comme le padding de filters.py.
+
+    Args:
+        image: np.ndarray (1, H, W) uint8
+    Returns:
+        np.ndarray (H*W, 9) uint8, fenêtre en ordre ligne par ligne
+        [haut-gauche, haut, haut-droite, gauche, centre, ..., bas-droite]
+    """
+    _, h, w = image.shape
+    padded = np.pad(image[0], 1, mode="constant", constant_values=0)
+    return np.array([padded[i:i+3, j:j+3].ravel()
+                     for i in range(h) for j in range(w)], dtype=np.uint8)
