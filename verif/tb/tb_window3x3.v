@@ -5,6 +5,7 @@
 //   +OUT=<file>   output windows, one 72-bit hex word per line (w00 first)
 //   +N=<count>    number of pixels (multiple of IMG_WIDTH*IMG_HEIGHT)
 //   +SEED=<int>   seed for random valid_in gaps (0 = no gaps)
+//   +VCD=<file>   optional: dump all signals to a VCD file (GTKWave)
 //
 // Handshake: a pixel is consumed when valid_in && ready_in at a rising edge.
 // Inputs are driven on the falling edge to avoid races with the DUT.
@@ -30,7 +31,7 @@ module tb_window3x3 #(
     wire [71:0] window_out;
 
     reg  [7:0]  pixels [0:MAX_PIXELS-1];
-    reg  [1023:0] in_file, out_file;
+    reg  [1023:0] in_file, out_file, vcd_file;
     integer     n, seed, fd, sent, received, cycles;
 
     window3x3 #(
@@ -65,6 +66,12 @@ module tb_window3x3 #(
             $finish;
         end
         if (!$value$plusargs("SEED=%d", seed)) seed = 0;
+
+        // Optional waveform dump for GTKWave: +VCD=<file>
+        if ($value$plusargs("VCD=%s", vcd_file)) begin
+            $dumpfile(vcd_file);
+            $dumpvars(0, tb_window3x3);
+        end
 
         $readmemh(in_file, pixels, 0, n - 1);
         fd = $fopen(out_file, "w");

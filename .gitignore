@@ -5,3 +5,4 @@ __pycache__
 .coverage
 docs/requirement/traceability_report.md
 JOURNAL.md
+build/

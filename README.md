@@ -174,6 +174,10 @@ make test-all
 make rtl-test
 make rtl-lint
 
+# Same RTL tests + waveforms for GTKWave (build/waves/<test>/), K = pytest -k filter
+make rtl-waves K=grayscale
+gtkwave build/waves/test_rtl_grayscale__test_matches_model_with_valid_gaps/wave.gtkw
+
 # Requirements traceability matrix
 make trace
 ```

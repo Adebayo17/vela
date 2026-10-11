@@ -56,6 +56,15 @@ TRACE_REPORT := docs/requirement/traceability_report.md
 rtl-test:
 	$(PYTHON) -m pytest verif/tests -v --tb=short
 
+# Same tests + VCD traces for GTKWave in build/waves/<test>/ (K = pytest -k filter)
+#   make rtl-waves K=grayscale
+#   gtkwave build/waves/<test>/wave.gtkw
+rtl-waves:
+	VELA_WAVES=1 $(PYTHON) -m pytest verif/tests -v --tb=short $(if $(K),-k "$(K)")
+	@echo ""
+	@echo "Traces : $$(ls -d build/waves/*/ 2>/dev/null | wc -l) dossiers dans build/waves/"
+	@echo "Ouvrir : gtkwave build/waves/<test>/wave.gtkw"
+
 rtl-lint:
 	@for f in $(RTL_SRC); do \
 		grep -q "TODO: Phase 2a" $$f && continue; \
@@ -103,3 +112,4 @@ clean:
 	rm -rf .coverage htmlcov coverage.xml python/.coverage
 	rm -rf python/tests/__pycache__
 	rm -rf verif/tests/__pycache__ verif/models/__pycache__ tools/__pycache__
+	rm -rf build

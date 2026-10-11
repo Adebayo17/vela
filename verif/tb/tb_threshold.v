@@ -5,6 +5,7 @@
 //   +OUT=<file>   output pixels (00 or ff), one 8-bit hex word per line
 //   +N=<count>    number of pixels
 //   +SEED=<int>   seed for random valid_in gaps (0 = no gaps)
+//   +VCD=<file>   optional: dump all signals to a VCD file (GTKWave)
 //
 // Part of VELA — Vision Edge Learning Accelerator
 // Phase 2a: Verilog RTL image filters
@@ -25,7 +26,7 @@ module tb_threshold #(
     wire [7:0]  pixel_out;
 
     reg  [7:0]  pixels [0:MAX_PIXELS-1];
-    reg  [1023:0] in_file, out_file;
+    reg  [1023:0] in_file, out_file, vcd_file;
     integer     n, seed, fd, sent, received, cycles;
 
     threshold #(.THRESHOLD(THRESHOLD)) dut (
@@ -54,6 +55,12 @@ module tb_threshold #(
             $finish;
         end
         if (!$value$plusargs("SEED=%d", seed)) seed = 0;
+
+        // Optional waveform dump for GTKWave: +VCD=<file>
+        if ($value$plusargs("VCD=%s", vcd_file)) begin
+            $dumpfile(vcd_file);
+            $dumpvars(0, tb_threshold);
+        end
 
         $readmemh(in_file, pixels, 0, n - 1);
         fd = $fopen(out_file, "w");
