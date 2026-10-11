@@ -95,6 +95,7 @@ vela/
 │   ├── data_loader.py          # CIFAR-10 binary reader + preprocessing
 │   ├── weights_loader.py       # TF weight file parser with CHW transposition
 │   ├── main.py                 # CLI entry point for CNN validation
+│   ├── gui_simulator.py        # Board simulator: OLED view, HW (bit-exact) / golden views
 │   └── tests/                  # Golden model tests
 │       ├── conftest.py         # Fixtures (data paths, weights, synthetic images)
 │       ├── test_cnn.py         # CNN unit + system tests
@@ -111,7 +112,8 @@ vela/
 ├── verif/                      # RTL verification (co-simulation vs bit-exact models)
 │   ├── models/
 │   │   ├── filters_hw.py       # Bit-exact integer models of the RTL filters
-│   │   └── oled_hw.py          # Expected SPI traffic of the OLED (init + RGB565 pixels)
+│   │   ├── oled_hw.py          # Expected SPI traffic of the OLED (init + RGB565 pixels)
+│   │   └── pipeline_hw.py      # Board output model: RTL filter chain -> RGB565 (GUI HW view)
 │   ├── tb/                     # File-driven Verilog testbenches (tb_<module>.v)
 │   │   └── spi_monitor.v       # Passive SPI decoder/checker (mode 0, SCLK period)
 │   └── tests/
@@ -168,6 +170,25 @@ python3 main.py
 # Validate on 1000 images (Sprint 1 exit criterion: >= 60%)
 python3 main.py --images 1000 --confusion
 ```
+
+### Board simulator (GUI)
+
+```bash
+make gui          # 100 random images
+make gui-small    # 20 images, faster start
+```
+
+Simulates the Pmod OLED (96x64) and the board controls. Two views, toggled with **H**:
+
+- **HW** (default): what the board will display. Raw 8-bit pixels go through the
+  bit-exact models of the RTL chain (`verif/models/pipeline_hw.py`: grayscale →
+  filter → RGB565), shown without rescaling. **S** cycles the Sobel `MAG_SHIFT`
+  (0-3; the RTL default 0 saturates 33-48 % of the pixels on CIFAR-10 images,
+  2 gives readable edges).
+- **GOLDEN**: floating-point golden model on the CNN-normalized image, rescaled
+  to [0, 255] for display.
+
+Other keys: ←/→ image, ↑/↓ filter, M mode CNN/filters, D debug panel, Q quit.
 
 ### Tests
 

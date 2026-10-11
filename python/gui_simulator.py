@@ -6,10 +6,19 @@ Simulates the Arty Z7-20 + Pmod OLED behavior:
   - Mode switch: CNN inference / Image filters
   - Image navigation and filter selection via keyboard
 
+Two views (key H):
+  - HW (default): what the board will display. Raw 8-bit pixels go through
+    the bit-exact models of the RTL chain (verif/models/pipeline_hw.py:
+    grayscale -> filter -> RGB565), shown without any rescaling.
+  - GOLDEN: floating-point golden model (python/filters.py) applied to the
+    CNN-normalized image, rescaled to [0, 255] for display.
+
 Controls:
   ←/→     Previous/Next image     (BTN0/BTN1)
   ↑/↓     Previous/Next filter    (BTN2/BTN3)
   M       Toggle mode CNN/Filter  (SW0)
+  H       Toggle view HW / GOLDEN
+  S       Sobel MAG_SHIFT 0..3 (HW view; RTL default is 0)
   D       Toggle debug panel
   Q/Esc   Quit
 
@@ -17,14 +26,19 @@ REQ: VELA-FR-007
 """
 
 import argparse
+import os
+import sys
 import tkinter as tk
-from tkinter import font as tkfont
 import numpy as np
 
-from data_loader import load_batch, crop_center, normalize, CIFAR10_CLASSES
+from data_loader import load_batch, crop_center, CIFAR10_CLASSES
 from weights_loader import load_weights
 from cnn import cnn_forward
 from filters import grayscale, sobel, gaussian, median, threshold
+
+# Bit-exact hardware models (verif/models) for the HW view
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "verif", "models"))
+from pipeline_hw import FILTERS, filter_frame, rgb565_to_rgb888   # noqa: E402
 
 
 # ─── Constants ───────────────────────────────────────────────────────────────
@@ -32,7 +46,65 @@ from filters import grayscale, sobel, gaussian, median, threshold
 OLED_W, OLED_H = 96, 64             # Pmod OLED SSD1331 resolution
 SCALE          = 6                  # Upscale factor for display
 IMG_SIZE       = 24                 # CIFAR post-crop
-FILTERS        = ["original", "grayscale", "sobel", "gaussian", "median", "threshold"]
+TEXT_ZONE      = 10                 # rows reserved for text at the bottom
+
+
+# ─── Frame composition (no Tk: testable) ─────────────────────────────────────
+
+def compose_frame(image_chw, text_line="", rescale=True):
+    """
+    Build the 96×64 RGB frame shown on the OLED.
+
+    Args:
+        image_chw: np.ndarray (C, H, W), 1 or 3 channels
+        text_line: text drawn in the bottom zone
+        rescale:   True  -> min/max rescale to [0, 255] (golden view, any range);
+                   False -> values used as-is, must already be uint8 (HW view)
+    Returns:
+        np.ndarray (64, 96, 3) uint8, image centered above the text zone
+    """
+    oled = np.zeros((OLED_H, OLED_W, 3), dtype=np.uint8)
+    img = image_chw
+    c, h, w = img.shape
+    if c == 1:
+        img = np.repeat(img, 3, axis=0)
+
+    if rescale:
+        img = img.astype(np.float32)
+        imin, imax = img.min(), img.max()
+        if imax - imin > 1e-6:
+            img = (img - imin) / (imax - imin) * 255.0
+        else:
+            img = np.clip(img, 0, 255)
+    elif img.dtype != np.uint8:
+        raise ValueError("rescale=False expects a uint8 image")
+
+    y_offset = (OLED_H - TEXT_ZONE - h) // 2
+    x_offset = (OLED_W - w) // 2
+    oled[y_offset:y_offset + h, x_offset:x_offset + w, :] = img.transpose(1, 2, 0).astype(np.uint8)
+
+    if text_line:
+        _draw_text(oled, text_line, y=OLED_H - 8)
+    return oled
+
+
+def _draw_text(buf, text, y, color=(0, 200, 0)):
+    """
+    Minimal pixel font renderer (4×6 glyphs).
+    Only supports uppercase, digits, space, dot, percent, colon, dash.
+    """
+    glyphs = _get_pixel_font()
+    x = 2
+    for ch in text.upper():
+        glyph = glyphs.get(ch)
+        if glyph is None:
+            x += 4
+            continue
+        for row_i, row in enumerate(glyph):
+            for col_i, pixel in enumerate(row):
+                if pixel and y + row_i < buf.shape[0] and x + col_i < buf.shape[1]:
+                    buf[y + row_i, x + col_i] = color
+        x += len(glyph[0]) + 1
 
 
 # ─── OledCanvas ──────────────────────────────────────────────────────────────
@@ -54,77 +126,26 @@ class OledCanvas:
         )
         self._photo = None
 
-    def render(self, image_chw, text_line=""):
+    def render(self, image_chw, text_line="", rescale=True):
         """
-        Draw a CHW float image centered on the OLED, with optional text below.
+        Draw an image centered on the OLED, with optional text below.
 
         Args:
-            image_chw: np.ndarray (C, H, W) — 1 or 3 channels, any value range
+            image_chw: np.ndarray (C, H, W) — 1 or 3 channels
             text_line: string to render below the image
+            rescale:   see compose_frame()
         """
-        # Create black 96×64 RGB buffer
-        oled = np.zeros((OLED_H, OLED_W, 3), dtype=np.uint8)
-
-        # Normalize image to 0-255 range
-        img = image_chw.copy()
-        c, h, w = img.shape
-
-        # Handle single-channel (grayscale/sobel/threshold) → replicate to RGB
-        if c == 1:
-            img = np.repeat(img, 3, axis=0)
-
-        # Normalize to [0, 255]
-        imin, imax = img.min(), img.max()
-        if imax - imin > 1e-6:
-            img = (img - imin) / (imax - imin) * 255.0
-        else:
-            img = np.clip(img, 0, 255)
-
-        img_hwc = img.transpose(1, 2, 0).astype(np.uint8)  # CHW → HWC
-
-        # Center the 24×24 image in the 96×64 OLED (leave room for text)
-        # Vertically: offset to leave space for text at bottom
-        y_offset = (OLED_H - 10 - h) // 2   # 10px reserved for text zone
-        x_offset = (OLED_W - w) // 2
-
-        oled[y_offset:y_offset + h, x_offset:x_offset + w, :] = img_hwc
-
-        # Render text line as pixel font (simple 4×6 bitmap)
-        if text_line:
-            self._draw_text(oled, text_line, y=OLED_H - 8)
+        oled = compose_frame(image_chw, text_line, rescale)
 
         # Upscale nearest-neighbor
         oled_scaled = np.repeat(np.repeat(oled, SCALE, axis=0), SCALE, axis=1)
 
-        # Convert to Tk PhotoImage
-        self._photo = tk.PhotoImage(
-            width=OLED_W * SCALE,
-            height=OLED_H * SCALE
-        )
-        # PPM header trick for fast pixel transfer
+        # Convert to Tk PhotoImage (PPM header trick for fast pixel transfer)
+        self._photo = tk.PhotoImage(width=OLED_W * SCALE, height=OLED_H * SCALE)
         header = f"P6 {OLED_W * SCALE} {OLED_H * SCALE} 255 ".encode()
         self._photo.configure(data=header + oled_scaled.tobytes())
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self._photo)
-
-    def _draw_text(self, buf, text, y, color=(0, 200, 0)):
-        """
-        Minimal pixel font renderer (4×6 glyphs).
-        Only supports uppercase, digits, space, dot, percent, colon.
-        """
-        glyphs = _get_pixel_font()
-        x = 2
-        for ch in text.upper():
-            glyph = glyphs.get(ch)
-            if glyph is None:
-                x += 4
-                continue
-            for row_i, row in enumerate(glyph):
-                for col_i, pixel in enumerate(row):
-                    if pixel and y + row_i < buf.shape[0] and x + col_i < buf.shape[1]:
-                        buf[y + row_i, x + col_i] = color
-            x += len(glyph[0]) + 1
-
 
 
 # ─── Police bitmap ───────────────────────────────────────────────────────────
@@ -145,12 +166,14 @@ def _get_pixel_font():
         'G': [[0,1,1],[1,0,0],[1,0,1],[1,0,1],[0,1,1],[0,0,0]],
         'H': [[1,0,1],[1,0,1],[1,1,1],[1,0,1],[1,0,1],[0,0,0]],
         'I': [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1],[0,0,0]],
+        'J': [[0,0,1],[0,0,1],[0,0,1],[1,0,1],[0,1,0],[0,0,0]],
         'K': [[1,0,1],[1,1,0],[1,0,0],[1,1,0],[1,0,1],[0,0,0]],
         'L': [[1,0,0],[1,0,0],[1,0,0],[1,0,0],[1,1,1],[0,0,0]],
         'M': [[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
         'N': [[1,0,1],[1,1,1],[1,1,1],[1,0,1],[1,0,1],[0,0,0]],
         'O': [[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0],[0,0,0]],
         'P': [[1,1,0],[1,0,1],[1,1,0],[1,0,0],[1,0,0],[0,0,0]],
+        'Q': [[0,1,0],[1,0,1],[1,0,1],[1,1,0],[0,1,1],[0,0,0]],
         'R': [[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1],[0,0,0]],
         'S': [[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[0,0,0]],
         'T': [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0],[0,0,0]],
@@ -158,6 +181,8 @@ def _get_pixel_font():
         'V': [[1,0,1],[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,0,0]],
         'W': [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1],[0,1,1,0],[0,0,0,0]],
         'X': [[1,0,1],[0,1,0],[0,1,0],[0,1,0],[1,0,1],[0,0,0]],
+        'Y': [[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,1,0],[0,0,0]],
+        'Z': [[1,1,1],[0,0,1],[0,1,0],[1,0,0],[1,1,1],[0,0,0]],
         '0': [[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0],[0,0,0]],
         '1': [[0,1,0],[1,1,0],[0,1,0],[0,1,0],[1,1,1],[0,0,0]],
         '2': [[1,1,0],[0,0,1],[0,1,0],[1,0,0],[1,1,1],[0,0,0]],
@@ -184,13 +209,15 @@ class VelaSimulator:
     def __init__(self, images_raw, images_pp, labels, weights):
         """
         Args:
-            images_raw : (N, 3, 32, 32) float32 — original images (for debug panel)
-            images_pp  : (N, 3, 24, 24) float32 — preprocessed images
+            images_raw : (N, 3, 32, 32) float32 — original images, 0-255
+            images_pp  : (N, 3, 24, 24) float32 — preprocessed images (CNN input)
             labels     : (N,) int — true labels
             weights    : dict — CNN weights from load_weights()
         """
         self.images_raw = images_raw
         self.images_pp  = images_pp
+        # Raw 8-bit 24×24 crops: what the board processes (HW view)
+        self.images_u8  = np.array([crop_center(img) for img in images_raw]).astype(np.uint8)
         self.labels     = labels
         self.weights    = weights
         self.n_images   = len(labels)
@@ -199,6 +226,8 @@ class VelaSimulator:
         self.img_idx    = 0
         self.filter_idx = 0       # index in FILTERS list
         self.mode       = "cnn"   # "cnn" or "filter"
+        self.view       = "hw"    # "hw" (bit-exact board output) or "golden"
+        self.mag_shift  = 0       # sobel_filter MAG_SHIFT used by the HW view
         self.show_debug = True    # debug panel visible
 
         # Cache CNN results to avoid recomputation
@@ -261,7 +290,7 @@ class VelaSimulator:
         info_frame.pack(pady=(15, 0), anchor="w")
 
         self.info_vars = {}
-        for key in ["Mode", "Image", "Vrai", "Prédit", "Proba", "Filtre"]:
+        for key in ["Mode", "Vue", "Image", "Vrai", "Prédit", "Proba", "Filtre", "Shift"]:
             row = tk.Frame(info_frame, bg="#1a1a1a")
             row.pack(fill=tk.X, pady=1)
             tk.Label(
@@ -278,7 +307,7 @@ class VelaSimulator:
         # ─── Controls help ───────────────────────────────────────────
         controls = tk.Label(
             self.root,
-            text="←→ images   ↑↓ filtres   M mode   D debug   Q quit",
+            text="←→ images   ↑↓ filtres   M mode   H vue HW/golden   S shift Sobel   D debug   Q quit",
             fg="#555555", bg="#1a1a1a", font=("Courier", 9)
         )
         controls.pack(pady=(5, 10))
@@ -290,6 +319,10 @@ class VelaSimulator:
         self.root.bind("<Down>",    lambda e: self._next_filter())
         self.root.bind("m",         lambda e: self._toggle_mode())
         self.root.bind("M",         lambda e: self._toggle_mode())
+        self.root.bind("h",         lambda e: self._toggle_view())
+        self.root.bind("H",         lambda e: self._toggle_view())
+        self.root.bind("s",         lambda e: self._next_mag_shift())
+        self.root.bind("S",         lambda e: self._next_mag_shift())
         self.root.bind("d",         lambda e: self._toggle_debug())
         self.root.bind("D",         lambda e: self._toggle_debug())
         self.root.bind("q",         lambda e: self.root.quit())
@@ -321,6 +354,14 @@ class VelaSimulator:
         self.mode = "filter" if self.mode == "cnn" else "cnn"
         self._update()
 
+    def _toggle_view(self):
+        self.view = "golden" if self.view == "hw" else "hw"
+        self._update()
+
+    def _next_mag_shift(self):
+        self.mag_shift = (self.mag_shift + 1) % 4
+        self._update()
+
     def _toggle_debug(self):
         self.show_debug = not self.show_debug
         if self.show_debug:
@@ -335,13 +376,14 @@ class VelaSimulator:
     def _update(self):
         """Refresh OLED display and debug panel."""
         img_pp  = self.images_pp[self.img_idx]     # (3, 24, 24) preprocessed
+        img_u8  = self.images_u8[self.img_idx]     # (3, 24, 24) raw uint8
         img_raw = self.images_raw[self.img_idx]     # (3, 32, 32) original
         label   = int(self.labels[self.img_idx])
 
         if self.mode == "cnn":
-            self._render_cnn(img_pp, label)
+            self._render_cnn(img_pp, img_u8, label)
         else:
-            self._render_filter(img_pp, label)
+            self._render_filter(img_pp, img_u8, label)
 
         # Update debug panel
         self._update_debug(img_raw, label)
@@ -349,10 +391,10 @@ class VelaSimulator:
         # Status bar
         self.status_var.set(
             f"  [{self.img_idx + 1}/{self.n_images}]  "
-            f"Mode: {self.mode.upper()}"
+            f"Mode: {self.mode.upper()}  Vue: {self.view.upper()}"
         )
 
-    def _render_cnn(self, img_pp, label):
+    def _render_cnn(self, img_pp, img_u8, label):
         """CNN mode: run inference, display class + probability."""
         # Check cache
         if self.img_idx not in self._cnn_cache:
@@ -364,16 +406,28 @@ class VelaSimulator:
         confidence = probs[pred] * 100
 
         text = f"{class_name} {confidence:.0f}%"
-        self.oled.render(img_pp, text)
+        if self.view == "hw":
+            # The board displays the raw image (RGB565), not the CNN input
+            shown = rgb565_to_rgb888(filter_frame(img_u8, "original"))
+            self.oled.render(shown, text, rescale=False)
+        else:
+            self.oled.render(img_pp, text)
 
         # Debug info
         self.info_vars["Prédit"].set(f"{class_name}")
         self.info_vars["Proba"].set(f"{confidence:.1f}%")
         self.info_vars["Filtre"].set("—")
 
-    def _render_filter(self, img_pp, label):
+    def _render_filter(self, img_pp, img_u8, label):
         """Filter mode: apply selected filter, display result."""
         fname = FILTERS[self.filter_idx]
+
+        if self.view == "hw":
+            # Bit-exact RTL chain on raw pixels -> RGB565, no rescaling
+            shown = rgb565_to_rgb888(filter_frame(img_u8, fname, mag_shift=self.mag_shift))
+            self.oled.render(shown, fname, rescale=False)
+            self._set_filter_info(fname)
+            return
 
         if fname == "original":
             filtered = img_pp
@@ -390,8 +444,9 @@ class VelaSimulator:
             filtered = threshold(gray)
 
         self.oled.render(filtered, fname)
+        self._set_filter_info(fname)
 
-        # Debug info
+    def _set_filter_info(self, fname):
         self.info_vars["Prédit"].set("—")
         self.info_vars["Proba"].set("—")
         self.info_vars["Filtre"].set(fname)
@@ -413,6 +468,8 @@ class VelaSimulator:
 
         # Info labels
         self.info_vars["Mode"].set(self.mode.upper())
+        self.info_vars["Vue"].set(self.view.upper())
+        self.info_vars["Shift"].set(f"{self.mag_shift}" if self.view == "hw" else "—")
         self.info_vars["Image"].set(f"#{self.img_idx}")
         self.info_vars["Vrai"].set(CIFAR10_CLASSES[label])
 
