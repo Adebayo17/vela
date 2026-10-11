@@ -131,7 +131,8 @@ vela/
 │   ├── requirement/            # Requirements (VELA-FR-xxx)
 │   └── TN/
 │       ├── TN001.md            # Technical note: CHW vs HWC memory layouts
-│       └── TN002.md            # Technical note: RTL verification method (co-simulation)
+│       ├── TN002.md            # Technical note: RTL verification method (co-simulation)
+│       └── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
