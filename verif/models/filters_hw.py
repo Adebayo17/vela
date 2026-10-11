@@ -94,7 +94,7 @@ def gaussian_u8(image):
     return ((acc + GAUSS_ROUND) >> 4).astype(np.uint8).reshape(1, h, w)
 
 
-def sobel_u8(image, mag_shift=0):
+def sobel_u8(image, mag_shift=2):
     """
     Détection de contours Sobel 3x3, identique à rtl/sobel_filter.v.
 
@@ -106,7 +106,8 @@ def sobel_u8(image, mag_shift=0):
 
     Args:
         image: np.ndarray (1, H, W) uint8
-        mag_shift: int, paramètre MAG_SHIFT du module (division par 2**mag_shift)
+        mag_shift: int, paramètre MAG_SHIFT du module (division par 2**mag_shift),
+                   2 par défaut comme dans rtl/sobel_filter.v
     Returns:
         np.ndarray (1, H, W) uint8
     """

@@ -72,7 +72,7 @@ def rgb565_to_rgb888(pixels):
     return np.stack([r, g, b]).astype(np.uint8)
 
 
-def filter_frame(image, name, threshold=128, mag_shift=0):
+def filter_frame(image, name, threshold=128, mag_shift=2):
     """
     RGB565 frame sent to the OLED for a given filter mode.
 
@@ -80,7 +80,7 @@ def filter_frame(image, name, threshold=128, mag_shift=0):
         image:     np.ndarray (3, H, W) uint8, raw RGB pixels
         name:      one of FILTERS
         threshold: THRESHOLD parameter of threshold.v
-        mag_shift: MAG_SHIFT parameter of sobel_filter.v
+        mag_shift: MAG_SHIFT parameter of sobel_filter.v (default 2, as in the RTL)
     Returns:
         np.ndarray (H, W) uint16, RGB565 pixels in raster order
     """

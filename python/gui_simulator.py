@@ -18,7 +18,7 @@ Controls:
   ↑/↓     Previous/Next filter    (BTN2/BTN3)
   M       Toggle mode CNN/Filter  (SW0)
   H       Toggle view HW / GOLDEN
-  S       Sobel MAG_SHIFT 0..3 (HW view; RTL default is 0)
+  S       Sobel MAG_SHIFT 0..3 (HW view; RTL default is 2)
   D       Toggle debug panel
   Q/Esc   Quit
 
@@ -227,7 +227,7 @@ class VelaSimulator:
         self.filter_idx = 0       # index in FILTERS list
         self.mode       = "cnn"   # "cnn" or "filter"
         self.view       = "hw"    # "hw" (bit-exact board output) or "golden"
-        self.mag_shift  = 0       # sobel_filter MAG_SHIFT used by the HW view
+        self.mag_shift  = 2       # sobel_filter MAG_SHIFT used by the HW view (RTL default)
         self.show_debug = True    # debug panel visible
 
         # Cache CNN results to avoid recomputation

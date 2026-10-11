@@ -183,8 +183,8 @@ Simulates the Pmod OLED (96x64) and the board controls. Two views, toggled with 
 - **HW** (default): what the board will display. Raw 8-bit pixels go through the
   bit-exact models of the RTL chain (`verif/models/pipeline_hw.py`: grayscale →
   filter → RGB565), shown without rescaling. **S** cycles the Sobel `MAG_SHIFT`
-  (0-3; the RTL default 0 saturates 33-48 % of the pixels on CIFAR-10 images,
-  2 gives readable edges).
+  (0-3; RTL default **2**: ~1 % of saturated pixels on CIFAR-10 images, versus
+  33-48 % with 0).
 - **GOLDEN**: floating-point golden model on the CNN-normalized image, rescaled
   to [0, 255] for display.
 
@@ -235,7 +235,7 @@ make trace
 ### Phase 2a — Verilog RTL: image filters
 - [x] `grayscale.v` — Fixed-point RGB to luminance
 - [x] `window3x3.v` — Shared 3x3 window generator (line buffers, zero padding, `ready_in` flush)
-- [x] `sobel_filter.v` — 3x3 Sobel with line buffers (saturated at 255, optional `MAG_SHIFT`)
+- [x] `sobel_filter.v` — 3x3 Sobel with line buffers (magnitude >> `MAG_SHIFT` (default 2), saturated at 255)
 - [x] `gaussian_filter.v` — 3x3 Gaussian with line buffers
 - [x] `median_filter.v` — 3x3 median (19-CAS sorting network, 3 pipeline stages)
 - [x] `threshold.v` — Comparator + binary output

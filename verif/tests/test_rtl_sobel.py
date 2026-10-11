@@ -2,7 +2,8 @@
 test_rtl_sobel.py — sobel_filter.v vs golden model co-simulation (Phase 2a)
 
 |Gx| + |Gy| peut atteindre 1530 alors que la sortie fait 8 bits : le module
-sature à 255. Avec MAG_SHIFT = 0, le modèle entier doit être exactement
+divise la magnitude par 2^MAG_SHIFT (2 par défaut) puis sature à 255.
+Avec MAG_SHIFT = 0, le modèle entier doit être exactement
 clip(golden model, 0, 255) ; le RTL doit être identique au modèle entier.
 """
 
@@ -56,7 +57,7 @@ class TestSobelHw:
         """MAG_SHIFT = 0 : identique au golden model saturé à 255."""
         img = random_gray(32, 32, seed=1)
         ref = np.clip(sobel(img.astype(np.float32)), 0, 255)
-        np.testing.assert_array_equal(sobel_u8(img), ref.astype(np.uint8))
+        np.testing.assert_array_equal(sobel_u8(img, mag_shift=0), ref.astype(np.uint8))
 
     @requirement("VELA-FR-008")
     def test_low_contrast_not_saturated(self):
@@ -64,14 +65,16 @@ class TestSobelHw:
         img = low_contrast(16, 16, seed=2)
         ref = sobel(img.astype(np.float32))[0, 1:-1, 1:-1]
         assert ref.max() < 255
-        np.testing.assert_array_equal(sobel_u8(img)[0, 1:-1, 1:-1], ref.astype(np.uint8))
+        np.testing.assert_array_equal(sobel_u8(img, mag_shift=0)[0, 1:-1, 1:-1],
+                                      ref.astype(np.uint8))
 
     @requirement("VELA-FR-008")
     def test_max_gradient_saturates(self):
-        """La fenêtre de magnitude maximale (1530) donne 255, ou 1530 >> 3 = 191."""
+        """Magnitude maximale 1530 : 255 (saturé) avec 0 et 2, 1530 >> 3 = 191 avec 3."""
         img = max_gradient_image()
         assert sobel(img.astype(np.float32))[0, 2, 2] == 1530
-        assert sobel_u8(img)[0, 2, 2] == 255
+        assert sobel_u8(img, mag_shift=0)[0, 2, 2] == 255
+        assert sobel_u8(img, mag_shift=2)[0, 2, 2] == 255     # 1530 >> 2 = 382
         assert sobel_u8(img, mag_shift=3)[0, 2, 2] == 191
 
     @requirement("VELA-FR-008")
@@ -114,13 +117,22 @@ class TestSobelRtl:
         np.testing.assert_array_equal(out, sobel_u8(img).ravel())
 
     @requirement("VELA-FR-008")
-    @pytest.mark.parametrize("mag_shift", [1, 3])
+    @pytest.mark.parametrize("mag_shift", [0, 1, 3])
     def test_mag_shift(self, tmp_path, mag_shift):
         """Paramètre MAG_SHIFT : magnitude divisée par 2^N avant saturation."""
         img = random_gray(8, 8, seed=4)
         img[:, 2:7, 2:7] = max_gradient_image()
         out = simulate([img], tmp_path, mag_shift=mag_shift)
         np.testing.assert_array_equal(out, sobel_u8(img, mag_shift).ravel())
+
+    @requirement("VELA-FR-008")
+    def test_default_mag_shift_is_2(self, tmp_path):
+        """Sans surcharge, le module divise par 4 (MAG_SHIFT = 2) : diffère de 0 et 3."""
+        img = random_gray(8, 8, seed=7)
+        out = simulate([img], tmp_path)
+        np.testing.assert_array_equal(out, sobel_u8(img, mag_shift=2).ravel())
+        assert not np.array_equal(out, sobel_u8(img, mag_shift=0).ravel())
+        assert not np.array_equal(out, sobel_u8(img, mag_shift=3).ravel())
 
     @requirement("VELA-FR-008")
     def test_consecutive_frames_with_valid_gaps(self, tmp_path):
