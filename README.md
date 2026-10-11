@@ -159,9 +159,26 @@ vela/
 
 ### Requirements
 
-- Python 3.8+
-- NumPy
-- pytest (for tests)
+| Tool | Used for | Needed by | Version used |
+| :--- | :--- | :--- | :--- |
+| Python 3.8+ with NumPy, pytest, pytest-cov | golden model, tests, analysis scripts | everything (`make setup` installs the packages in `.venv`) | Python 3.12 |
+| Tkinter (`python3-tk`) | board simulator GUI | `make gui` | system package |
+| Icarus Verilog (`iverilog`, `vvp`) | RTL co-simulation | `make rtl-test`, `make test` | 12.0 |
+| Verilator | RTL lint | `make rtl-lint`, `make test` | 5.052 |
+| g++ (C++14) | C++ CNN reference | `make hls-test`, `make test` | 13.3 |
+| GTKWave | waveform viewer (optional) | `make rtl-waves` | 3.3.116 |
+| Vivado 2024.2 | out-of-context synthesis and place & route | `make synth` | 2024.2 |
+| Vitis HLS 2024.2 | CNN accelerator (Phase 2b) | upcoming HLS steps | 2024.2 |
+| GNU Make | task runner | all `make` targets | — |
+
+The tests skip what they cannot run: RTL tests without Icarus Verilog, lint
+tests without Verilator, C++ tests without g++. Vivado is only needed for
+`make synth`.
+
+```bash
+make setup                         # create .venv and install the Python packages
+sudo apt install python3-tk iverilog verilator g++ gtkwave   # Ubuntu / Debian
+```
 
 ### Data
 
@@ -301,8 +318,13 @@ make trace
 
 - **Vivado 2024.2** — FPGA synthesis, implementation, bitstream
 - **Vitis HLS 2024.2** — C++ to RTL synthesis (CNN only)
-- **Python 3 + NumPy** — Golden model and validation
+- **Python 3 + NumPy + pytest** — Golden model, bit-exact models, test runner
+- **Icarus Verilog + Verilator** — RTL co-simulation and lint
+- **g++** — C++ CNN reference
+- **GTKWave** — waveforms (optional)
 - **Make** — Task automation (via Git Bash on Windows)
+
+Versions and the `make` targets that need each tool: see [Requirements](#requirements).
 
 ## License
 
