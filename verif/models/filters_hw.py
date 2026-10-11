@@ -116,3 +116,46 @@ def sobel_u8(image, mag_shift=0):
     gy = (win[:, 6] + 2 * win[:, 7] + win[:, 8]) - (win[:, 0] + 2 * win[:, 1] + win[:, 2])
     mag = (np.abs(gx) + np.abs(gy)) >> mag_shift
     return np.minimum(mag, 255).astype(np.uint8).reshape(1, h, w)
+
+
+# Réseau de sélection de la médiane de 9 valeurs (« opt_med9 », 19 compare-échanges).
+# Chaque paire (a, b) : p[a], p[b] = min, max. La médiane finit en p[4].
+# Regroupé par étage de pipeline de rtl/median_filter.v (3 niveaux par étage).
+MEDIAN9_STAGES = [
+    [(1, 2), (4, 5), (7, 8), (0, 1), (3, 4), (6, 7), (1, 2), (4, 5), (7, 8)],   # étage 1
+    [(0, 3), (5, 8), (4, 7), (3, 6), (1, 4), (2, 5), (4, 7)],                   # étage 2
+    [(4, 2), (6, 4), (4, 2)],                                                   # étage 3
+]
+
+
+def median9_network(values):
+    """
+    Applique MEDIAN9_STAGES, comme le RTL.
+
+    Args:
+        values: np.ndarray (N, 9), une fenêtre par ligne
+    Returns:
+        np.ndarray (N,), la médiane de chaque fenêtre
+    """
+    p = np.array(values, copy=True)
+    for stage in MEDIAN9_STAGES:
+        for a, b in stage:
+            lo = np.minimum(p[:, a], p[:, b])
+            hi = np.maximum(p[:, a], p[:, b])
+            p[:, a], p[:, b] = lo, hi
+    return p[:, 4]
+
+
+def median_u8(image):
+    """
+    Filtre médian 3x3, identique à rtl/median_filter.v.
+
+    Médiane des 9 pixels de la fenêtre, bords à 0 (comme filters.median).
+
+    Args:
+        image: np.ndarray (1, H, W) uint8
+    Returns:
+        np.ndarray (1, H, W) uint8
+    """
+    _, h, w = image.shape
+    return median9_network(windows_3x3_u8(image)).astype(np.uint8).reshape(1, h, w)
