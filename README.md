@@ -110,11 +110,14 @@ vela/
 │   └── spi_master.v            # SPI master for OLED communication
 ├── verif/                      # RTL verification (co-simulation vs bit-exact models)
 │   ├── models/
-│   │   └── filters_hw.py       # Bit-exact integer models of the RTL filters
+│   │   ├── filters_hw.py       # Bit-exact integer models of the RTL filters
+│   │   └── oled_hw.py          # Expected SPI traffic of the OLED (init + RGB565 pixels)
 │   ├── tb/                     # File-driven Verilog testbenches (tb_<module>.v)
+│   │   └── spi_monitor.v       # Passive SPI decoder/checker (mode 0, SCLK period)
 │   └── tests/
 │       ├── rtl_sim.py          # iverilog/vvp runner for file-driven testbenches
-│       └── test_rtl_*.py       # One co-simulation test file per RTL module
+│       ├── test_rtl_*.py       # One co-simulation test file per RTL module
+│       └── test_rtl_lint.py    # Verilator lint + Verilog-2005 check of every RTL file
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_hw.cpp              # CNN accelerator (ap_fixed)
 │   ├── cnn_hw.h                # Interface & type definitions
@@ -217,6 +220,7 @@ make trace
 - [x] `threshold.v` — Comparator + binary output
 - [x] Testbenches with Python golden model comparison (`make rtl-test`, waveforms: `make rtl-waves`)
 - [x] Synthesis in Vivado, resource/timing check (`make synth`: all modules meet 100 MHz, filters use 1.4 % LUT, 0 DSP)
+- [x] Display path verified: `spi_master` (SPI mode 0, 6.25 MHz) and `oled_controller` (power/reset sequence, SSD1331 init, RGB565 pixels), parameterized for 100 MHz
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)
 - [ ] Port CNN to C++ double precision (reference)

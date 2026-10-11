@@ -1,13 +1,34 @@
+// oled_controller.v — Pmod OLEDrgb (SSD1331, 96x64) controller
+//
+// Power-up and init sequence, then streams RGB565 pixels received over
+// AXI-Stream to the display through spi_master (2 bytes per pixel, high
+// byte first, oled_dc = 1).
+//
+//   1. power on (pmoden, vccen), wait POWER_UP_CYCLES  (20 ms)
+//   2. oled_res low for RESET_CYCLES                   (100 us), then high
+//   3. wait RESET_CYCLES, send the 31 init bytes of init_rom (oled_dc = 0)
+//   4. s_axis_tready = 1: accept a pixel, send its 2 bytes, repeat
+//
+// A pixel is accepted on a rising edge where s_axis_tvalid && s_axis_tready.
+// Throughput is limited by SPI: 2 bytes x 17 half SCLK periods per pixel.
+//
+// Delays are derived from CLK_FREQ; POWER_UP_CYCLES and RESET_CYCLES can be
+// overridden (tests use short values to keep simulations fast).
+//
+// Verified by: verif/tests/test_rtl_oled_controller.py
+//
+// Part of VELA — Vision Edge Learning Accelerator
+
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Module Name: oled_controller
-// Description: Module to Control the Pmod OLEDrgb
-//////////////////////////////////////////////////////////////////////////////////
 
-
-module oled_controller(
+module oled_controller #(
+    parameter CLK_FREQ        = 100_000_000,       // system clock (VELA-NFR-001)
+    parameter SPI_FREQ        = 6_250_000,         // SPI clock
+    parameter POWER_UP_CYCLES = CLK_FREQ / 50,     // 20 ms
+    parameter RESET_CYCLES    = CLK_FREQ / 10_000  // 100 us
+)(
     input   wire        clk,
-    input   wire        rst,
+    input   wire        rst_n,              // synchronous, active low
     
     // AXI-Stream Slave Interface (Pixels Input)
     input   wire [15:0] s_axis_tdata,       // Pixel RGB565 (16-bit)
@@ -34,9 +55,16 @@ module oled_controller(
     localparam S_WAIT_LOW   = 7;    // Wait for SPI to finish
     
     
-    reg [2:0]   state;
-    reg [15:0]  pixel_buffer;       // Store pixel to send
-    reg [21:0]  delay_cnt;
+    localparam DW = $clog2(POWER_UP_CYCLES + 1);   // delay counter width
+
+    /* verilator lint_off WIDTHTRUNC */
+    localparam [DW-1:0] POWER_UP_DLY = POWER_UP_CYCLES;   // fit: DW from $clog2
+    localparam [DW-1:0] RESET_DLY    = RESET_CYCLES;
+    /* verilator lint_on WIDTHTRUNC */
+
+    reg [2:0]    state;
+    reg [15:0]   pixel_buffer;      // Store pixel to send
+    reg [DW-1:0] delay_cnt;
     
     // --- 2. ROM Initialization (SSD1331 commands) ---
     // Standard sequence for OLED RGB 96*64
@@ -88,11 +116,11 @@ module oled_controller(
     wire       spi_done;
 
     spi_master #(
-        .CLK_FREQ(125_000_000),
-        .SPI_FREQ(6_250_000)
+        .CLK_FREQ(CLK_FREQ),
+        .SPI_FREQ(SPI_FREQ)
     ) u_spi (
         .clk(clk),
-        .rst(rst),
+        .rst_n(rst_n),
         .start(spi_start),
         .data_in(spi_data),
         .busy(spi_busy),
@@ -103,19 +131,19 @@ module oled_controller(
     
     // --- 4. FSM Logic ---
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst_n) begin
             state           <= S_POWER_UP;
             oled_vccen      <= 0;
             oled_pmoden     <= 0;
             oled_res        <= 1;       // Reset is Active-Low, so 1 = inactif
             oled_dc         <= 0;       // Default: Mode Commande 
             rom_index       <= 0;
-            delay_cnt       <= 2500000; // 20ms wait at power up
+            delay_cnt       <= POWER_UP_DLY;    // 20 ms wait at power up
             spi_start       <= 0;
             s_axis_tready   <= 0;      // Upper Byte 
         end else begin
             // Timer management 
-            if (delay_cnt > 0) delay_cnt <= delay_cnt - 1;
+            if (delay_cnt != {DW{1'b0}}) delay_cnt <= delay_cnt - 1'b1;
             
             // SPI Pulse management (1 cycle)
             spi_start <= 0; 
@@ -126,26 +154,26 @@ module oled_controller(
                 S_POWER_UP: begin
                     oled_vccen  <= 1;
                     oled_pmoden <= 1;
-                    if (delay_cnt == 0) begin
+                    if (delay_cnt == {DW{1'b0}}) begin
                         state <= S_RESET;
-                        delay_cnt <= 12500; // Little delay for reset (100us)
+                        delay_cnt <= RESET_DLY; // reset pulse (100 us)
                         oled_res <= 0;      // Activate Reset
                     end
                 end
 
                 // Step B : Hardware Reset
                 S_RESET: begin
-                    if (delay_cnt == 0) begin
+                    if (delay_cnt == {DW{1'b0}}) begin
                         oled_res <= 1;      // Release Reset
                         state <= S_INIT;
-                        delay_cnt <= 12500; // Post-reset waiting
+                        delay_cnt <= RESET_DLY; // post-reset wait (100 us)
                     end
                 end
 
                 // Step C : Send Init Sequence
                 S_INIT: begin
                     // We wait until the post-reset delay is over AND the SPI is free
-                    if (delay_cnt == 0 && !spi_busy && !spi_start) begin
+                    if (delay_cnt == {DW{1'b0}} && !spi_busy && !spi_start) begin
                         if (rom_index < ROM_SIZE) begin
                             oled_dc   <= 0;                     // It's a Command
                             spi_data  <= init_rom[rom_index];
@@ -204,10 +232,3 @@ module oled_controller(
         end
     end 
 endmodule
-
-
-
-
-
-
-

@@ -50,7 +50,7 @@ test-threshold:
 
 # ─── RTL (Phase 2a) ──────────────────────────────────────────────────────────
 
-RTL_SRC := $(filter-out rtl/oled_controller.v rtl/spi_master.v,$(wildcard rtl/*.v))
+RTL_SRC := $(wildcard rtl/*.v)
 TRACE_REPORT := docs/requirement/traceability_report.md
 
 rtl-test:
@@ -67,7 +67,6 @@ rtl-waves:
 
 rtl-lint:
 	@for f in $(RTL_SRC); do \
-		grep -q "TODO: Phase 2a" $$f && continue; \
 		echo "lint $$f"; verilator --lint-only -Wall --quiet -y rtl $$f || exit 1; \
 	done
 

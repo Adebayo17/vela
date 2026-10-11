@@ -10,6 +10,7 @@
 | VELA-FR-006 | Aucune classe à 0% de précision                                              |
 | VELA-FR-007 | Filtres image (grayscale, sobel, gaussian, median, threshold)                |
 | VELA-FR-008 | RTL des filtres bit-exact vs modèle entier, < 1 LSB vs golden model flottant |
+| VELA-FR-009 | Affichage OLED : init SSD1331 puis pixels RGB565 (octet haut d'abord) en SPI mode 0 à 6,25 MHz |
 
 ## Non-functional requirements
 

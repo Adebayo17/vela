@@ -119,7 +119,8 @@ def unpack_bytes(words, n_bytes):
 
 
 def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=None,
-                  out_width=8, defines=None):
+                  out_width=8, defines=None, plusargs=None, tb_sources=None, timeout=60,
+                  raw=False):
     """
     Compile and simulate a file-driven testbench.
 
@@ -133,6 +134,10 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
         params:    dict of testbench parameter overrides, e.g. {"THRESHOLD": 100}
         out_width: output word width in bits
         defines:   dict of preprocessor macros, e.g. {"DUT": "gaussian_filter"}
+        plusargs:  dict of extra simulation plusargs, e.g. {"HALF": 8} -> +HALF=8
+        tb_sources: extra verification files in verif/tb/, e.g. ["spi_monitor.v"]
+        timeout:   simulation time limit in seconds
+        raw:       return the output words as a list of Python ints (any width)
     Returns:
         np.ndarray uint32 of output words if out_width <= 32,
         else np.ndarray (N, out_width/8) uint8 (bytes MSB first)
@@ -144,7 +149,8 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
 
     write_hex(in_file, in_words, in_width)
 
-    files = [str(TB_DIR / f"{tb_name}.v")] + [str(RTL_DIR / s) for s in sources]
+    files = [str(TB_DIR / f"{tb_name}.v")] + [str(TB_DIR / s) for s in (tb_sources or [])]
+    files += [str(RTL_DIR / s) for s in sources]
     overrides = [f"-P{tb_name}.{k}={v}" for k, v in (params or {}).items()]
     overrides += [f"-D{k}={v}" for k, v in (defines or {}).items()]
     subprocess.run(
@@ -158,8 +164,8 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
     result = subprocess.run(
         [VVP, "-n", str(sim_bin),
          f"+IN={in_file}", f"+OUT={out_file}", f"+N={len(in_words)}", f"+SEED={seed}"]
-        + vcd_arg,
-        check=True, capture_output=True, text=True, timeout=60,
+        + [f"+{k}={v}" for k, v in (plusargs or {}).items()] + vcd_arg,
+        check=True, capture_output=True, text=True, timeout=timeout,
     )
     if wave_dir:
         shutil.copy(in_file, wave_dir / "in.hex")
@@ -169,6 +175,8 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
     assert "DONE" in result.stdout, result.stdout
 
     words = read_hex(out_file)
+    if raw:
+        return words
     if out_width <= 32:
         return np.array(words, dtype=np.uint32)
     return unpack_bytes(words, out_width // 8)
