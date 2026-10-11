@@ -92,3 +92,27 @@ def gaussian_u8(image):
     _, h, w = image.shape
     acc = windows_3x3_u8(image).astype(np.uint32) @ GAUSS_KERNEL
     return ((acc + GAUSS_ROUND) >> 4).astype(np.uint8).reshape(1, h, w)
+
+
+def sobel_u8(image, mag_shift=0):
+    """
+    Détection de contours Sobel 3x3, identique à rtl/sobel_filter.v.
+
+    Gx = [-1 0 1; -2 0 2; -1 0 1], Gy = [-1 -2 -1; 0 0 0; 1 2 1]
+    Y  = min((|Gx| + |Gy|) >> mag_shift, 255)
+
+    |Gx| + |Gy| peut atteindre 1530 : la sortie 8 bits est saturée.
+    Avec mag_shift = 0, Y == clip(filters.sobel(image), 0, 255) exactement.
+
+    Args:
+        image: np.ndarray (1, H, W) uint8
+        mag_shift: int, paramètre MAG_SHIFT du module (division par 2**mag_shift)
+    Returns:
+        np.ndarray (1, H, W) uint8
+    """
+    _, h, w = image.shape
+    win = windows_3x3_u8(image).astype(np.int32)
+    gx = (win[:, 2] + 2 * win[:, 5] + win[:, 8]) - (win[:, 0] + 2 * win[:, 3] + win[:, 6])
+    gy = (win[:, 6] + 2 * win[:, 7] + win[:, 8]) - (win[:, 0] + 2 * win[:, 1] + win[:, 2])
+    mag = (np.abs(gx) + np.abs(gy)) >> mag_shift
+    return np.minimum(mag, 255).astype(np.uint8).reshape(1, h, w)

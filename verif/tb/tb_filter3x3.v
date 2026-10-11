@@ -1,6 +1,7 @@
 // tb_filter3x3.v — File-driven testbench shared by the 3x3 filters
 //
 // The module under test is chosen at compile time: iverilog -DDUT=<module>
+// Module-specific parameters: iverilog -DDUT_EXTRA_PARAMS=",.NAME(value)"
 // (gaussian_filter, sobel_filter, median_filter). They all have the same
 // interface: IMG_WIDTH/IMG_HEIGHT, valid_in/ready_in/pixel_in, valid_out/pixel_out.
 //
@@ -20,6 +21,11 @@
 
 `ifndef DUT
 `define DUT gaussian_filter
+`endif
+
+// Extra DUT parameters, e.g. -DDUT_EXTRA_PARAMS=",.MAG_SHIFT(2)" (empty by default)
+`ifndef DUT_EXTRA_PARAMS
+`define DUT_EXTRA_PARAMS
 `endif
 
 module tb_filter3x3 #(
@@ -44,6 +50,7 @@ module tb_filter3x3 #(
     `DUT #(
         .IMG_WIDTH  (IMG_WIDTH),
         .IMG_HEIGHT (IMG_HEIGHT)
+        `DUT_EXTRA_PARAMS
     ) dut (
         .clk        (clk),
         .rst_n      (rst_n),
