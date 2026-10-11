@@ -71,3 +71,24 @@ def windows_3x3_u8(image):
     padded = np.pad(image[0], 1, mode="constant", constant_values=0)
     return np.array([padded[i:i+3, j:j+3].ravel()
                      for i in range(h) for j in range(w)], dtype=np.uint8)
+
+
+GAUSS_KERNEL = np.array([1, 2, 1, 2, 4, 2, 1, 2, 1], dtype=np.uint32)   # somme = 16
+GAUSS_ROUND = 8
+
+
+def gaussian_u8(image):
+    """
+    Flou gaussien 3x3, identique à rtl/gaussian_filter.v.
+
+    Y = (somme(noyau * fenêtre) + 8) >> 4     (+8 : arrondi au plus proche)
+    Noyau [1 2 1; 2 4 2; 1 2 1], bords à 0 (comme filters.gaussian).
+
+    Args:
+        image: np.ndarray (1, H, W) uint8
+    Returns:
+        np.ndarray (1, H, W) uint8
+    """
+    _, h, w = image.shape
+    acc = windows_3x3_u8(image).astype(np.uint32) @ GAUSS_KERNEL
+    return ((acc + GAUSS_ROUND) >> 4).astype(np.uint8).reshape(1, h, w)

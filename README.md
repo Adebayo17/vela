@@ -199,10 +199,10 @@ make trace
 - [x] `grayscale.v` — Fixed-point RGB to luminance
 - [x] `window3x3.v` — Shared 3x3 window generator (line buffers, zero padding, `ready_in` flush)
 - [ ] `sobel_filter.v` — 3x3 Sobel with line buffers
-- [ ] `gaussian_filter.v` — 3x3 Gaussian with line buffers
+- [x] `gaussian_filter.v` — 3x3 Gaussian with line buffers
 - [ ] `median_filter.v` — 3x3 median (sorting network)
 - [x] `threshold.v` — Comparator + binary output
-- [ ] Testbenches with Python golden model comparison (grayscale, threshold, window3x3 done: `make rtl-test`)
+- [ ] Testbenches with Python golden model comparison (grayscale, threshold, window3x3, gaussian done: `make rtl-test`)
 - [ ] Synthesis in Vivado, resource/timing check
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)

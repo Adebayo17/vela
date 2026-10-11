@@ -1,4 +1,6 @@
-PYTHON := python3
+# Use the project venv (created by `make setup`) when it exists, else system python3.
+# Absolute path: some targets `cd python` first.
+PYTHON := $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
@@ -57,7 +59,7 @@ rtl-test:
 rtl-lint:
 	@for f in $(RTL_SRC); do \
 		grep -q "TODO: Phase 2a" $$f && continue; \
-		echo "lint $$f"; verilator --lint-only -Wall $$f || exit 1; \
+		echo "lint $$f"; verilator --lint-only -Wall --quiet -y rtl $$f || exit 1; \
 	done
 
 

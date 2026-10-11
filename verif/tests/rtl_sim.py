@@ -49,7 +49,7 @@ def unpack_bytes(words, n_bytes):
 
 
 def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=None,
-                  out_width=8):
+                  out_width=8, defines=None):
     """
     Compile and simulate a file-driven testbench.
 
@@ -62,6 +62,7 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
         seed:      random seed for valid_in gaps (0 = continuous stream)
         params:    dict of testbench parameter overrides, e.g. {"THRESHOLD": 100}
         out_width: output word width in bits
+        defines:   dict of preprocessor macros, e.g. {"DUT": "gaussian_filter"}
     Returns:
         np.ndarray uint32 of output words if out_width <= 32,
         else np.ndarray (N, out_width/8) uint8 (bytes MSB first)
@@ -75,6 +76,7 @@ def run_testbench(tb_name, sources, in_words, in_width, workdir, seed=0, params=
 
     files = [str(TB_DIR / f"{tb_name}.v")] + [str(RTL_DIR / s) for s in sources]
     overrides = [f"-P{tb_name}.{k}={v}" for k, v in (params or {}).items()]
+    overrides += [f"-D{k}={v}" for k, v in (defines or {}).items()]
     subprocess.run(
         [IVERILOG, "-g2012", "-Wall", "-s", tb_name, "-o", str(sim_bin)] + overrides + files,
         check=True, capture_output=True, text=True,
