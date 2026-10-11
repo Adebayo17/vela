@@ -130,11 +130,13 @@ vela/
 │   ├── testbench.cpp           # Vitis HLS C simulation testbench — to do
 │   ├── tb/cnn_ref_main.cpp     # Batch runner of the reference (driven by pytest)
 │   └── generated/              # cnn_weights.h (make hls-weights, not tracked)
-├── data/                       # Data files (not tracked in git)
-│   ├── CNN_coeff_3x3.txt       # Pre-trained weights
-│   └── cifar-10-batches-bin/
-│       ├── test_batch.bin      # 10000 test images
-│       └── batches.meta.txt
+├── data/                       # Data files (tracked in git: tests run right after cloning)
+│   ├── CNN_coeff_3x3.txt       # Pre-trained weights (used by VELA)
+│   ├── CNN_coeff_5x5.txt       # Pre-trained weights, 5x5 kernels (not used)
+│   └── cifar-10-batches-bin/   # CIFAR-10 test set only (no training batches)
+│       ├── test_batch.bin      # 10000 test images (30 MB)
+│       ├── batches.meta.txt    # Class names
+│       └── readme.html
 ├── tools/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
 │   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
@@ -161,10 +163,17 @@ vela/
 - NumPy
 - pytest (for tests)
 
-### Data setup
+### Data
 
-Download [CIFAR-10 binary version](https://www.cs.toronto.edu/~kriz/cifar.html) and extract into `data/cifar-10-batches-bin/`.  
-Place `CNN_coeff_3x3.txt` in `data/`.
+The data needed by VELA is included in the repository, in `data/`: the
+pre-trained weights (`CNN_coeff_3x3.txt`) and the CIFAR-10 **test** set
+(`cifar-10-batches-bin/test_batch.bin`, 10 000 images, binary version from
+[CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html)). Nothing to download.
+
+The training batches are not included: VELA only runs inference with the
+pre-trained weights. The golden model tests also accept other locations
+through the `VELA_DATA_DIR` and `VELA_WEIGHTS_FILE` environment variables
+(`python/tests/conftest.py`).
 
 ### Run
 
@@ -202,10 +211,10 @@ Other keys: ←/→ image, ↑/↓ filter, M mode CNN/filters, D debug panel, Q 
 ### Tests
 
 ```bash
-# Fast unit tests (no CIFAR-10 data needed, only weights file)
+# Fast tests (golden model, RTL, pipeline, C++ CNN reference)
 make test
 
-# All tests including accuracy validation (needs CIFAR-10 data)
+# All tests, including the slow ones (CNN accuracy on 1000 images, OLED real delays)
 make test-all
 
 # RTL co-simulation vs bit-exact model (needs Icarus Verilog) + Verilator lint
