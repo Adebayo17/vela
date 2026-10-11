@@ -4,11 +4,17 @@ oled_hw.py — Reference model of the OLED display path (spi_master + oled_contr
 What the Pmod OLEDrgb (SSD1331) must receive on its SPI bus, as a list of
 (dc, byte) transactions: dc = 0 for commands, dc = 1 for pixel data.
 
+Power-up order (SSD1331 datasheet Rev 1.2 section 7.9, Digilent OLEDrgb_DevInit):
+logic supply (pmoden) -> reset -> init commands -> panel supply (vccen)
+-> Display ON (0xAF) -> pixels. VCC must stay off until after the reset.
+
 Specification values used by the tests (VELA-NFR-001: 100 MHz clock):
-    SCLK          6.25 MHz         -> half period = 8 cycles at 100 MHz
-    power-up wait 20 ms            (pmoden/vccen high -> reset)
-    reset pulse   100 us           (oled_res low)
-    post-reset    100 us           (oled_res high -> first command)
+    SCLK            6.25 MHz   -> half period = 8 cycles at 100 MHz
+    power-up wait   20 ms      (pmoden high -> reset)
+    reset pulse     100 us     (oled_res low; datasheet minimum 3 us)
+    post-reset      100 us     (oled_res high -> first command)
+    VCC settle      25 ms      (vccen high -> Display ON)
+    display turn-on 100 ms     (Display ON -> first pixel accepted)
 """
 
 # REQ: VELA-FR-009
@@ -16,9 +22,11 @@ Specification values used by the tests (VELA-NFR-001: 100 MHz clock):
 SPI_FREQ = 6_250_000
 POWER_UP_S = 20e-3
 RESET_S = 100e-6
+VCC_ON_S = 25e-3
+DISPLAY_ON_S = 100e-3
 
-# SSD1331 init sequence sent by oled_controller (31 command bytes).
-# Same content as init_rom in rtl/oled_controller.v.
+# SSD1331 command bytes sent by oled_controller: the 30 bytes of init_rom
+# (rtl/oled_controller.v), then Display ON (0xAF) once VCC is on.
 SSD1331_INIT = [
     0xAE,              # display off
     0xA0, 0x72,        # remap: RGB, 65k colors (RGB565)

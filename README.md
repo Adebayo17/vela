@@ -220,7 +220,7 @@ make trace
 - [x] `threshold.v` — Comparator + binary output
 - [x] Testbenches with Python golden model comparison (`make rtl-test`, waveforms: `make rtl-waves`)
 - [x] Synthesis in Vivado, resource/timing check (`make synth`: all modules meet 100 MHz, filters use 1.4 % LUT, 0 DSP)
-- [x] Display path verified: `spi_master` (SPI mode 0, 6.25 MHz) and `oled_controller` (power/reset sequence, SSD1331 init, RGB565 pixels), parameterized for 100 MHz
+- [x] Display path verified: `spi_master` (SPI mode 0, 6.25 MHz) and `oled_controller` (SSD1331 datasheet power-up order: VCC after reset and init, 25 ms before Display ON; RGB565 pixels), parameterized for 100 MHz
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)
 - [ ] Port CNN to C++ double precision (reference)

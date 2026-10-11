@@ -4,16 +4,24 @@
 // AXI-Stream to the display through spi_master (2 bytes per pixel, high
 // byte first, oled_dc = 1).
 //
-//   1. power on (pmoden, vccen), wait POWER_UP_CYCLES  (20 ms)
-//   2. oled_res low for RESET_CYCLES                   (100 us), then high
-//   3. wait RESET_CYCLES, send the 31 init bytes of init_rom (oled_dc = 0)
-//   4. s_axis_tready = 1: accept a pixel, send its 2 bytes, repeat
+// Power-up sequence (SSD1331 datasheet Rev 1.2 section 7.9, same order as
+// Digilent's OLEDrgb_DevInit): the panel supply VCC is switched on only
+// after the reset and the init commands.
+//
+//   1. pmoden = 1 (logic supply), vccen = 0, wait POWER_UP_CYCLES   (20 ms)
+//   2. oled_res low for RESET_CYCLES (>= 3 us required)             (100 us)
+//   3. wait RESET_CYCLES, send the 30 init bytes of init_rom (oled_dc = 0)
+//   4. vccen = 1 (panel supply), wait VCC_ON_CYCLES                 (25 ms)
+//   5. send Display ON (0xAF), wait DISPLAY_ON_CYCLES               (100 ms)
+//   6. s_axis_tready = 1: accept a pixel, send its 2 bytes, repeat
+//
+// No power-off sequence (0xAE, vccen = 0) is implemented.
 //
 // A pixel is accepted on a rising edge where s_axis_tvalid && s_axis_tready.
 // Throughput is limited by SPI: 2 bytes x 17 half SCLK periods per pixel.
 //
-// Delays are derived from CLK_FREQ; POWER_UP_CYCLES and RESET_CYCLES can be
-// overridden (tests use short values to keep simulations fast).
+// Delays are derived from CLK_FREQ and can be overridden (tests use short
+// values to keep simulations fast).
 //
 // Verified by: verif/tests/test_rtl_oled_controller.py
 //
@@ -24,8 +32,10 @@
 module oled_controller #(
     parameter CLK_FREQ        = 100_000_000,       // system clock (VELA-NFR-001)
     parameter SPI_FREQ        = 6_250_000,         // SPI clock
-    parameter POWER_UP_CYCLES = CLK_FREQ / 50,     // 20 ms
-    parameter RESET_CYCLES    = CLK_FREQ / 10_000  // 100 us
+    parameter POWER_UP_CYCLES   = CLK_FREQ / 50,     // 20 ms
+    parameter RESET_CYCLES      = CLK_FREQ / 10_000, // 100 us
+    parameter VCC_ON_CYCLES     = CLK_FREQ / 40,     // 25 ms: VCC stabilization
+    parameter DISPLAY_ON_CYCLES = CLK_FREQ / 10      // 100 ms: SEG/COM turn-on
 )(
     input   wire        clk,
     input   wire        rst_n,              // synchronous, active low
@@ -53,22 +63,31 @@ module oled_controller #(
     localparam S_WAIT_HIGH  = 5;    // Wait for SPI to finish
     localparam S_SEND_LOW   = 6;    // Send LOW BYTE
     localparam S_WAIT_LOW   = 7;    // Wait for SPI to finish
-    
-    
-    localparam DW = $clog2(POWER_UP_CYCLES + 1);   // delay counter width
+    localparam S_VCC_ON     = 8;    // Panel supply on, wait for it to settle
+    localparam S_DISP_ON    = 9;    // Display ON command being sent
+    localparam S_DISP_WAIT  = 10;   // Wait for SEG/COM turn-on
+
+    // Delay counter width: enough for the longest delay
+    localparam MAX_DLY_A = (POWER_UP_CYCLES > VCC_ON_CYCLES) ? POWER_UP_CYCLES : VCC_ON_CYCLES;
+    localparam MAX_DLY_B = (RESET_CYCLES > DISPLAY_ON_CYCLES) ? RESET_CYCLES : DISPLAY_ON_CYCLES;
+    localparam MAX_DLY   = (MAX_DLY_A > MAX_DLY_B) ? MAX_DLY_A : MAX_DLY_B;
+    localparam DW        = $clog2(MAX_DLY + 1);
 
     /* verilator lint_off WIDTHTRUNC */
-    localparam [DW-1:0] POWER_UP_DLY = POWER_UP_CYCLES;   // fit: DW from $clog2
-    localparam [DW-1:0] RESET_DLY    = RESET_CYCLES;
+    localparam [DW-1:0] POWER_UP_DLY   = POWER_UP_CYCLES;   // fit: DW from $clog2
+    localparam [DW-1:0] RESET_DLY      = RESET_CYCLES;
+    localparam [DW-1:0] VCC_ON_DLY     = VCC_ON_CYCLES;
+    localparam [DW-1:0] DISPLAY_ON_DLY = DISPLAY_ON_CYCLES;
     /* verilator lint_on WIDTHTRUNC */
 
-    reg [2:0]    state;
+    reg [3:0]    state;
     reg [15:0]   pixel_buffer;      // Store pixel to send
     reg [DW-1:0] delay_cnt;
     
     // --- 2. ROM Initialization (SSD1331 commands) ---
-    // Standard sequence for OLED RGB 96*64
-    localparam ROM_SIZE = 31;
+    // Standard sequence for OLED RGB 96*64. Display ON (0xAF) is not in the
+    // ROM: it is sent after VCC is switched on (state S_VCC_ON).
+    localparam ROM_SIZE = 30;
     reg [7:0] init_rom [0:ROM_SIZE-1];
     reg [4:0] rom_index;
     initial begin 
@@ -105,8 +124,6 @@ module oled_controller #(
         init_rom[27] = 8'h75; // Set Row Address
         init_rom[28] = 8'h00; // Start = 0
         init_rom[29] = 8'h3F; // End = 63 (0x3F)
-        
-        init_rom[30] = 8'hAF; // Display ON (Last command!)
     end 
     
     // --- 3. SPI MASTER Instance ---
@@ -150,9 +167,8 @@ module oled_controller #(
 
             case (state)
                 // --- Init Sequence ---
-                // Step A : Turn on the power supplies
+                // Step A : Turn on the logic supply only (VCC stays off)
                 S_POWER_UP: begin
-                    oled_vccen  <= 1;
                     oled_pmoden <= 1;
                     if (delay_cnt == {DW{1'b0}}) begin
                         state <= S_RESET;
@@ -180,9 +196,36 @@ module oled_controller #(
                             spi_start <= 1;                     // Start sending
                             rom_index <= rom_index + 1;
                         end else begin
-                            s_axis_tready <= 1;
-                            state <= S_WAIT_DATA;               // Init terminated!
+                            // Init commands done (last byte finished): panel supply on
+                            oled_vccen <= 1;
+                            delay_cnt  <= VCC_ON_DLY;           // 25 ms
+                            state      <= S_VCC_ON;
                         end
+                    end
+                end
+
+                // Step D : VCC stable -> Display ON
+                S_VCC_ON: begin
+                    if (delay_cnt == {DW{1'b0}} && !spi_busy) begin
+                        oled_dc   <= 0;                         // Command
+                        spi_data  <= 8'hAF;                     // Display ON
+                        spi_start <= 1;
+                        state     <= S_DISP_ON;
+                    end
+                end
+
+                S_DISP_ON: begin
+                    if (spi_done) begin
+                        delay_cnt <= DISPLAY_ON_DLY;            // 100 ms
+                        state     <= S_DISP_WAIT;
+                    end
+                end
+
+                // Step E : SEG/COM on -> accept pixels
+                S_DISP_WAIT: begin
+                    if (delay_cnt == {DW{1'b0}}) begin
+                        s_axis_tready <= 1;
+                        state         <= S_WAIT_DATA;           // Init terminated!
                     end
                 end
 
@@ -228,6 +271,9 @@ module oled_controller #(
                         state <= S_WAIT_DATA; // Pixel finished, next!
                     end
                 end
+
+                // Unused state codes: restart the power-up sequence
+                default: state <= S_POWER_UP;
             endcase
         end
     end 

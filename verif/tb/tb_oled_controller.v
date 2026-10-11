@@ -24,8 +24,10 @@
 module tb_oled_controller #(
     parameter CLK_FREQ        = 100_000_000,   // overridden with iverilog -P
     parameter SPI_FREQ        = 6_250_000,
-    parameter POWER_UP_CYCLES = 0,             // 0 = keep the DUT defaults (from CLK_FREQ)
-    parameter RESET_CYCLES    = 0
+    parameter POWER_UP_CYCLES   = 0,           // 0 = keep the DUT defaults (from CLK_FREQ)
+    parameter RESET_CYCLES      = 0,
+    parameter VCC_ON_CYCLES     = 0,
+    parameter DISPLAY_ON_CYCLES = 0
 );
 
     localparam MAX_PIXELS = 65536;
@@ -63,8 +65,10 @@ module tb_oled_controller #(
             oled_controller #(
                 .CLK_FREQ        (CLK_FREQ),
                 .SPI_FREQ        (SPI_FREQ),
-                .POWER_UP_CYCLES (POWER_UP_CYCLES),
-                .RESET_CYCLES    (RESET_CYCLES)
+                .POWER_UP_CYCLES   (POWER_UP_CYCLES),
+                .RESET_CYCLES      (RESET_CYCLES),
+                .VCC_ON_CYCLES     (VCC_ON_CYCLES),
+                .DISPLAY_ON_CYCLES (DISPLAY_ON_CYCLES)
             ) dut (`OLED_PORTS);
         end else begin : g_default
             oled_controller #(
