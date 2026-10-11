@@ -243,14 +243,14 @@ make trace
 - [x] Synthesis in Vivado, resource/timing check (`make synth`: all modules meet 100 MHz, filters use 1.4 % LUT, 0 DSP)
 - [x] Display path verified: `spi_master` (SPI mode 0, 6.25 MHz) and `oled_controller` (SSD1331 datasheet power-up order: VCC after reset and init, 25 ms before Display ON; RGB565 pixels), parameterized for 100 MHz
 
-### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)
+### Phase 2b — HLS C++: CNN accelerator (Vitis HLS 2024.2)
 - [ ] Port CNN to C++ double precision (reference)
 - [ ] Analyze value ranges for `ap_fixed` sizing
 - [ ] Port to `ap_fixed` for Vitis HLS synthesis
 - [ ] Optimize with pipeline/unroll directives
 - [ ] Export CNN IP to Vivado
 
-### Phase 3 — FPGA integration (Vivado 2024.1)
+### Phase 3 — FPGA integration (Vivado 2024.2)
 - [ ] Block design: Zynq PS + CNN IP + filter IPs + OLED controller
 - [ ] Button/switch debounce (~10ms) + mode FSM
 - [ ] ARM bare-metal application (SD card read, filter/CNN dispatch, OLED update)
@@ -278,8 +278,8 @@ make trace
 
 ## Tools
 
-- **Vivado 2024.1** — FPGA synthesis, implementation, bitstream
-- **Vitis HLS 2024.1** — C++ to RTL synthesis (CNN only)
+- **Vivado 2024.2** — FPGA synthesis, implementation, bitstream
+- **Vitis HLS 2024.2** — C++ to RTL synthesis (CNN only)
 - **Python 3 + NumPy** — Golden model and validation
 - **Make** — Task automation (via Git Bash on Windows)
 
