@@ -119,11 +119,17 @@ vela/
 │   └── tests/
 │       ├── rtl_sim.py          # iverilog/vvp runner for file-driven testbenches
 │       ├── test_rtl_*.py       # One co-simulation test file per RTL module
-│       └── test_rtl_lint.py    # Verilator lint + Verilog-2005 check of every RTL file
+│       ├── test_rtl_lint.py    # Verilator lint + Verilog-2005 check of every RTL file
+│       ├── hls_sim.py          # g++ build/run helper for the C++ CNN code
+│       └── test_hls_cnn_ref.py # C++ CNN reference vs golden model
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
-│   ├── cnn_hw.cpp              # CNN accelerator (ap_fixed)
-│   ├── cnn_hw.h                # Interface & type definitions
-│   └── testbench.cpp           # C simulation testbench
+│   ├── cnn_params.h            # CNN dimensions
+│   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
+│   ├── cnn_hw.cpp              # CNN accelerator (ap_fixed) — to do
+│   ├── cnn_hw.h                # Interface & type definitions — to do
+│   ├── testbench.cpp           # Vitis HLS C simulation testbench — to do
+│   ├── tb/cnn_ref_main.cpp     # Batch runner of the reference (driven by pytest)
+│   └── generated/              # cnn_weights.h (make hls-weights, not tracked)
 ├── data/                       # Data files (not tracked in git)
 │   ├── CNN_coeff_3x3.txt       # Pre-trained weights
 │   └── cifar-10-batches-bin/
@@ -131,6 +137,7 @@ vela/
 │       └── batches.meta.txt
 ├── tools/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
+│   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
 │   ├── synth.tcl               # Vivado OOC synthesis + P&R of each module (make synth)
 │   ├── synth_summary.py        # Synthesis summary + NFR-002/004 check
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
@@ -211,6 +218,9 @@ gtkwave build/waves/test_rtl_grayscale__test_matches_model_with_valid_gaps/wave.
 make synth                         # all modules, ~6 min; reports in build/synth/
 make synth MODULES="sobel_filter"  # a subset
 
+# C++ CNN reference vs golden model (g++, no Vitis needed)
+make hls-test
+
 # Requirements traceability matrix
 make trace
 ```
@@ -244,7 +254,7 @@ make trace
 - [x] Display path verified: `spi_master` (SPI mode 0, 6.25 MHz) and `oled_controller` (SSD1331 datasheet power-up order: VCC after reset and init, 25 ms before Display ON; RGB565 pixels), parameterized for 100 MHz
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis HLS 2024.2)
-- [ ] Port CNN to C++ double precision (reference)
+- [x] Port CNN to C++ double precision (reference): 1000/1000 predictions identical to Python, 76.0 % (`make hls-test`)
 - [ ] Analyze value ranges for `ap_fixed` sizing
 - [ ] Port to `ap_fixed` for Vitis HLS synthesis
 - [ ] Optimize with pipeline/unroll directives

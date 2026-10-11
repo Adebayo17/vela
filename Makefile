@@ -71,6 +71,16 @@ rtl-lint:
 	done
 
 
+# ─── HLS (phase 2b) ──────────────────────────────────────────────────────────
+# En-tête C++ des poids (généré, non versionné) + tests de la référence C++
+
+hls-weights:
+	$(PYTHON) tools/gen_weights_header.py
+
+hls-test:
+	$(PYTHON) -m pytest verif/tests/test_hls_cnn_ref.py -v --tb=short
+
+
 # ─── Synthèse Vivado (hors contexte) ─────────────────────────────────────────
 # Synthèse + placement-routage de chaque module à 100 MHz sur xc7z020,
 # rapports dans build/synth/<module>/, bilan + vérif NFR-002/004.
@@ -126,4 +136,4 @@ clean:
 	rm -rf .coverage htmlcov coverage.xml python/.coverage
 	rm -rf python/tests/__pycache__
 	rm -rf verif/tests/__pycache__ verif/models/__pycache__ tools/__pycache__
-	rm -rf build
+	rm -rf build hls/generated

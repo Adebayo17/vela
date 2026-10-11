@@ -6,3 +6,4 @@ __pycache__
 docs/requirement/traceability_report.md
 JOURNAL.md
 build/
+hls/generated/
