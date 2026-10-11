@@ -11,7 +11,8 @@
 // Window, line buffers and zero padding: window3x3.v
 // Multiplications by 2 are wire shifts: no DSP, only adders.
 //
-// Latency: window3x3 latency + 1 clock cycle.
+// Latency: window3x3 latency + 2 clock cycles (gradients are registered:
+// the single-cycle version missed 100 MHz by 0.1 ns after place & route).
 // ready_in is low during the end-of-frame flush (IMG_WIDTH+1 cycles).
 //
 // Bit-exact reference model: verif/models/filters_hw.py::sobel_u8
@@ -63,8 +64,21 @@ module sobel_filter #(
 
     // ── Gradients (signed, |G| <= 1020 fits in 12-bit signed) ──────────────
 
-    wire signed [11:0] gx = (w02 + (w12 <<< 1) + w22) - (w00 + (w10 <<< 1) + w20);
-    wire signed [11:0] gy = (w20 + (w21 <<< 1) + w22) - (w00 + (w01 <<< 1) + w02);
+    wire signed [11:0] gx_c = (w02 + (w12 <<< 1) + w22) - (w00 + (w10 <<< 1) + w20);
+    wire signed [11:0] gy_c = (w20 + (w21 <<< 1) + w22) - (w00 + (w01 <<< 1) + w02);
+
+    // Pipeline register: gradients | absolute value, sum, saturation
+    reg signed [11:0] gx, gy;
+    reg               g_valid;
+
+    always @(posedge clk) begin
+        if (!rst_n)
+            g_valid <= 1'b0;
+        else
+            g_valid <= win_valid;
+        gx <= gx_c;
+        gy <= gy_c;
+    end
 
     // |G| <= 1020: the negated value always fits in the 11 LSBs (sign bit unused)
     /* verilator lint_off UNUSEDSIGNAL */
@@ -85,8 +99,8 @@ module sobel_filter #(
             valid_out <= 1'b0;
             pixel_out <= 8'd0;
         end else begin
-            valid_out <= win_valid;
-            if (win_valid)
+            valid_out <= g_valid;
+            if (g_valid)
                 pixel_out <= mag_sat;
         end
     end

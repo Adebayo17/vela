@@ -126,6 +126,8 @@ vela/
 │       └── batches.meta.txt
 ├── tools/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
+│   ├── synth.tcl               # Vivado OOC synthesis + P&R of each module (make synth)
+│   ├── synth_summary.py        # Synthesis summary + NFR-002/004 check
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
 ├── docs/
 │   ├── requirement/            # Requirements (VELA-FR-xxx)
@@ -181,6 +183,10 @@ make rtl-lint
 make rtl-waves K=grayscale
 gtkwave build/waves/test_rtl_grayscale__test_matches_model_with_valid_gaps/wave.gtkw
 
+# Synthesis + place & route of each RTL module (Vivado, out of context, 100 MHz)
+make synth                         # all modules, ~6 min; reports in build/synth/
+make synth MODULES="sobel_filter"  # a subset
+
 # Requirements traceability matrix
 make trace
 ```
@@ -210,7 +216,7 @@ make trace
 - [x] `median_filter.v` — 3x3 median (19-CAS sorting network, 3 pipeline stages)
 - [x] `threshold.v` — Comparator + binary output
 - [x] Testbenches with Python golden model comparison (`make rtl-test`, waveforms: `make rtl-waves`)
-- [ ] Synthesis in Vivado, resource/timing check
+- [x] Synthesis in Vivado, resource/timing check (`make synth`: all modules meet 100 MHz, filters use 1.4 % LUT, 0 DSP)
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis 2024.1)
 - [ ] Port CNN to C++ double precision (reference)

@@ -72,6 +72,21 @@ rtl-lint:
 	done
 
 
+# ─── Synthèse Vivado (hors contexte) ─────────────────────────────────────────
+# Synthèse + placement-routage de chaque module à 100 MHz sur xc7z020,
+# rapports dans build/synth/<module>/, bilan + vérif NFR-002/004.
+#   make synth                          (tous les modules, quelques minutes)
+#   make synth MODULES="sobel_filter"   (un sous-ensemble)
+
+synth:
+	cd build 2>/dev/null || mkdir -p build
+	cd build && vivado -mode batch -nojournal -nolog \
+		-source ../tools/synth.tcl -tclargs synth $(MODULES) > synth.log 2>&1 \
+		|| (tail -30 synth.log; exit 1)
+	@grep "^SUMMARY" build/synth.log
+	$(PYTHON) tools/synth_summary.py build/synth
+
+
 # ─── Traçabilité ─────────────────────────────────────────────────────────────
 
 trace:
