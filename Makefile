@@ -80,6 +80,11 @@ hls-weights:
 hls-test:
 	$(PYTHON) -m pytest verif/tests/test_hls_cnn_ref.py -v --tb=short
 
+# Plages de valeurs + types ap_fixed candidats sur les 10 000 images (TN004, ~3 min)
+cnn-fixed-point:
+	$(PYTHON) tools/cnn_fixed_point_analysis.py --images 10000 \
+		--configs 16:16:rnd,14:14:rnd,12:12:rnd,16:16:trn --report build/cnn_fixed_point_10k.md
+
 
 # ─── Synthèse Vivado (hors contexte) ─────────────────────────────────────────
 # Synthèse + placement-routage de chaque module à 100 MHz sur xc7z020,

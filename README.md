@@ -138,6 +138,7 @@ vela/
 ├── tools/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
 │   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
+│   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
 │   ├── synth.tcl               # Vivado OOC synthesis + P&R of each module (make synth)
 │   ├── synth_summary.py        # Synthesis summary + NFR-002/004 check
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
@@ -146,7 +147,8 @@ vela/
 │   └── TN/
 │       ├── TN001.md            # Technical note: CHW vs HWC memory layouts
 │       ├── TN002.md            # Technical note: RTL verification method (co-simulation)
-│       └── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
+│       ├── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
+│       └── TN004.md            # Technical note: CNN fixed-point sizing (ranges, ap_fixed types)
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
@@ -255,7 +257,7 @@ make trace
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis HLS 2024.2)
 - [x] Port CNN to C++ double precision (reference): 1000/1000 predictions identical to Python, 76.0 % (`make hls-test`)
-- [ ] Analyze value ranges for `ap_fixed` sizing
+- [x] Analyze value ranges for `ap_fixed` sizing (TN004: 16-bit weights/activations, round + saturate, 100 % agreement on 10 000 images)
 - [ ] Port to `ap_fixed` for Vitis HLS synthesis
 - [ ] Optimize with pipeline/unroll directives
 - [ ] Export CNN IP to Vivado
