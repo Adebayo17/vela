@@ -132,6 +132,7 @@ def build_hw(workdir):
          # Loop labels name the loops for the HLS directives (step 4);
          # plain C++ never jumps to them.
          "-Wno-unused-label",
+         "-Wno-unknown-pragmas",               # #pragma HLS, read by Vitis only
          f"-I{HLS_DIR}", f"-I{gen_dir}",
          str(HLS_DIR / "cnn_hw.cpp"), str(HLS_DIR / "tb" / "cnn_hw_main.cpp"),
          "-o", str(exe)],

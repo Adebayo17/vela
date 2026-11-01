@@ -128,7 +128,7 @@ vela/
 │   ├── cnn_params.h            # CNN dimensions
 │   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
 │   ├── cnn_hw.h / cnn_hw.cpp   # CNN accelerator in ap_fixed (TN004 types), HLS top function
-│   ├── testbench.cpp           # Vitis HLS C simulation testbench — to do (step 4)
+│   ├── testbench.cpp           # Vitis HLS testbench (C-sim and C/RTL co-sim), bit-exact vs the TN004 model
 │   ├── tb/cnn_ref_main.cpp     # Batch runner of the reference (driven by pytest)
 │   ├── tb/cnn_hw_main.cpp      # Batch runner of the ap_fixed CNN (driven by pytest)
 │   └── generated/              # cnn_weights.h (make hls-weights, not tracked)
@@ -143,6 +143,8 @@ vela/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
 │   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
 │   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
+│   ├── gen_hls_tb_data.py      # Stimuli + expected results of the Vitis HLS testbench
+│   ├── hls.tcl                 # Vitis HLS flow: C-sim, synthesis, C/RTL co-sim, export
 │   ├── synth.tcl               # Vivado OOC synthesis + P&R of each module (make synth)
 │   ├── synth_summary.py        # Synthesis summary + NFR-002/004 check
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
@@ -251,6 +253,11 @@ make synth MODULES="sobel_filter"  # a subset
 # C++ CNN: double reference and ap_fixed version (g++ + Vitis ap_fixed headers)
 make hls-test
 
+# Vitis HLS 2024.2: C-simulation, synthesis report, C/RTL co-simulation
+make hls-csim
+make hls-synth
+make hls-cosim
+
 # Requirements traceability matrix
 make trace
 ```
@@ -287,7 +294,7 @@ make trace
 - [x] Port CNN to C++ double precision (reference): 1000/1000 predictions identical to Python, 76.0 % (`make hls-test`)
 - [x] Analyze value ranges for `ap_fixed` sizing (TN004: 16-bit weights/activations, round + saturate, 99.99 % agreement on 10 000 images)
 - [x] Port to `ap_fixed` for Vitis HLS synthesis: bit-exact with the TN004 model, 99.99 % agreement and 74.47 % accuracy on 10 000 images (`make hls-test`)
-- [ ] Optimize with pipeline/unroll directives
+- [x] Optimize with pipeline/unroll directives: 8 output channels in parallel + maxpool fused into the convolutions → 613 664 cycles (6.14 ms), 74 BRAM18 (26 %), 21 DSP (9 %), 20 % LUT (`make hls-synth`)
 - [ ] Export CNN IP to Vivado
 
 ### Phase 3 — FPGA integration (Vivado 2024.2)

@@ -1,3 +1,6 @@
+# bash, not /bin/sh (dash): Vitis' settings64.sh uses `source`
+SHELL := /bin/bash
+
 # Use the project venv (created by `make setup`) when it exists, else system python3.
 # Absolute path: some targets `cd python` first.
 PYTHON := $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
@@ -80,6 +83,38 @@ hls-weights:
 # Référence C++ double + CNN ap_fixed (g++ et en-têtes Vitis, comme une C-simulation)
 hls-test:
 	$(PYTHON) -m pytest verif/tests/test_hls_cnn_ref.py verif/tests/test_hls_cnn_hw.py -v --tb=short
+
+# Vitis HLS (étape 4) : projet dans build/hls/cnn_proj, testbench hls/testbench.cpp
+# comparé au modèle bit-exact (données : tools/gen_hls_tb_data.py).
+#   make hls-csim     C-simulation (~1 min)
+#   make hls-synth    C-simulation + synthèse, rapport de latence / ressources (~3 min)
+#   make hls-cosim    synthèse + co-simulation C/RTL sur HLS_N images (long)
+VITIS_SETTINGS ?= $(HOME)/tools/Xilinx/Vitis/2024.2/settings64.sh
+HLS_N ?= 20
+HLS_REPORT := build/hls/cnn_proj/sol1/syn/report/cnn_hw_csynth.rpt
+
+hls-data: hls-weights
+	$(PYTHON) tools/gen_hls_tb_data.py $(HLS_N) build/hls
+
+define run_hls
+	cd build && . $(VITIS_SETTINGS) >/dev/null && \
+		VELA_HLS_STEPS="$(1)" VELA_HLS_N=$(HLS_N) vitis-run --mode hls --tcl ../tools/hls.tcl \
+		> hls_$(2).log 2>&1 || (tail -30 hls_$(2).log; exit 1)
+	@grep -E "PASS:|FAIL:|MISMATCH" build/hls_$(2).log || true
+endef
+
+hls-csim: hls-data
+	$(call run_hls,csim,csim)
+
+hls-synth: hls-data
+	$(call run_hls,csim synth,synth)
+	@sed -n '/+ Latency:/,/Detail/p' $(HLS_REPORT) | sed -n '5,7p'
+	@grep -E "^\|Total  |^\|Utilization" $(HLS_REPORT) | head -2
+
+hls-cosim: HLS_N = 3
+hls-cosim: hls-data
+	$(call run_hls,cosim,cosim)
+	@grep -E "Pass|Fail|Latency" build/hls/cnn_proj/sol1/sim/report/cnn_hw_cosim.rpt 2>/dev/null | head -5 || true
 
 # Plages de valeurs + types ap_fixed candidats sur les 10 000 images (TN004, ~3 min)
 cnn-fixed-point:

@@ -1,11 +1,12 @@
 // cnn_hw.cpp — CNN accelerator in fixed point (see cnn_hw.h)
 //
 // Quantization points (VELA-TN-004 §5): products and sums are exact in acc_t;
-// each conv output is rounded/saturated once to its activation type after
-// the ReLU. Rounding and saturation are monotonic, so quantizing before the
-// maxpool gives the same result as quantizing after it.
+// each conv output is rounded/saturated once to its activation type, then
+// merged into the maxpool. Rounding and saturation are monotonic, so
+// quantizing before the maxpool gives the same result as after it.
 //
-// Plain loops with labels, for the HLS directives of step 4.
+// Loops are labelled; the HLS directives (step 4) are written inline with
+// their reason. g++ ignores them (C-simulation unchanged).
 //
 // Part of VELA — Vision Edge Learning Accelerator
 // Phase 2b: CNN accelerator (Vitis HLS)
@@ -22,55 +23,87 @@ CnnHwTrace *cnn_hw_trace = 0;
 
 namespace {
 
-// Conv 3x3 "same" (zero padding) + bias + ReLU, output quantized to TOUT.
-template <typename TIN, typename TOUT, int CIN, int COUT, int H, int W>
-void conv3x3_relu(const TIN in[CIN][H][W], const weight_t w[COUT][CIN][K][K],
-                  const weight_t b[COUT], TOUT out[COUT][H][W]) {
-conv_co:
-    for (int co = 0; co < COUT; co++) {
+// Conv 3x3 "same" (zero padding) + bias + ReLU + maxpool 3x3 / stride 2
+// (TensorFlow SAME), fused: the conv outputs are never stored.
+//
+// Parallelism (step 4, VELA-NFR-008): U output channels are computed at once.
+// Each input value is read once and multiplied by U weights held in U memory
+// banks (weights partitioned cyclically by U on the output-channel
+// dimension), into U accumulators; the innermost loop is pipelined at one
+// iteration per cycle, i.e. U MACs per cycle. Sums are exact in acc_t, so the
+// summation order does not change the result.
+//
+// Fused maxpool (step 4, VELA-NFR-009): pool cell (pi, pj) covers conv rows
+// 2*pi..2*pi+2 and columns 2*pj..2*pj+2 (SAME padding adds the missing row /
+// column at the bottom / right, never selected). A conv output at row y thus
+// belongs to pool row y/2 and, when y is even and >= 2, also to y/2 - 1;
+// same for columns: up to 4 cells, updated with max(). The pool is cleared
+// to 0 before the layer, which also performs the ReLU (max with 0). Same
+// values and same quantization as conv -> ReLU -> maxpool: bit-exact.
+template <typename TIN, typename TOUT, int CIN, int COUT, int H, int W,
+          int HO, int WO, int U>
+void conv3x3_relu_pool(const TIN in[CIN][H][W], const weight_t w[COUT][CIN][K][K],
+                       const weight_t b[COUT], TOUT pool[COUT][HO][WO]) {
+pool_clear:
+    for (int c = 0; c < COUT; c += U)
+        for (int pi = 0; pi < HO; pi++)
+            for (int pj = 0; pj < WO; pj++) {
+#pragma HLS PIPELINE II=1
+                for (int u = 0; u < U; u++) {
+#pragma HLS UNROLL
+                    pool[c + u][pi][pj] = 0;
+                }
+            }
+
+conv_cb:
+    for (int cb = 0; cb < COUT; cb += U) {
     conv_row:
         for (int i = 0; i < H; i++) {
         conv_col:
             for (int j = 0; j < W; j++) {
-                acc_t acc = b[co];
+                acc_t acc[U];
+#pragma HLS ARRAY_PARTITION variable=acc complete
+            conv_init:
+                for (int u = 0; u < U; u++) {
+#pragma HLS UNROLL
+                    acc[u] = b[cb + u];
+                }
             conv_ci:
                 for (int ci = 0; ci < CIN; ci++) {
                 conv_m:
                     for (int m = 0; m < K; m++) {
                     conv_n:
                         for (int n = 0; n < K; n++) {
+#pragma HLS PIPELINE II=1
                             const int y = i + m - K / 2;
                             const int x = j + n - K / 2;
-                            if (y >= 0 && y < H && x >= 0 && x < W)
-                                acc += in[ci][y][x] * w[co][ci][m][n];
+                            const bool inside = y >= 0 && y < H && x >= 0 && x < W;
+                            const TIN v = inside ? in[ci][inside ? y : 0][inside ? x : 0] : TIN(0);
+                        conv_mac:
+                            for (int u = 0; u < U; u++) {
+#pragma HLS UNROLL
+                                acc[u] += v * w[cb + u][ci][m][n];
+                            }
                         }
                     }
                 }
-                out[co][i][j] = acc > 0 ? TOUT(acc) : TOUT(0);
-            }
-        }
-    }
-}
-
-// Maxpool 3x3, stride 2, TensorFlow SAME padding (added at the bottom/right,
-// ignored). Inputs are >= 0 (after ReLU), so 0 is a valid start value.
-template <typename T, int C, int H, int W, int HO, int WO>
-void maxpool_same(const T in[C][H][W], T out[C][HO][WO]) {
-pool_c:
-    for (int c = 0; c < C; c++) {
-    pool_row:
-        for (int i = 0; i < HO; i++) {
-        pool_col:
-            for (int j = 0; j < WO; j++) {
-                T m = 0;
-                for (int u = 0; u < POOL; u++)
-                    for (int v = 0; v < POOL; v++) {
-                        const int y = i * POOL_STRIDE + u;
-                        const int x = j * POOL_STRIDE + v;
-                        if (y < H && x < W && in[c][y][x] > m)
-                            m = in[c][y][x];
+                // Pool cells containing conv output (i, j): rows i/2 and, for an
+                // even i >= 2, i/2 - 1; same for columns.
+            pool_update:
+                for (int k = 0; k < 4; k++) {
+                    const int pi = (i >> 1) - (k >> 1);
+                    const int pj = (j >> 1) - (k & 1);
+                    const bool row_ok = (k >> 1) == 0 || ((i & 1) == 0 && i >= 2);
+                    const bool col_ok = (k & 1) == 0 || ((j & 1) == 0 && j >= 2);
+                    if (row_ok && col_ok) {
+                    pool_lane:
+                        for (int u = 0; u < U; u++) {
+#pragma HLS UNROLL
+                            const TOUT q = TOUT(acc[u]);   // rounded / saturated
+                            if (q > pool[cb + u][pi][pj]) pool[cb + u][pi][pj] = q;
+                        }
                     }
-                out[c][i][j] = m;
+                }
             }
         }
     }
@@ -79,19 +112,29 @@ pool_c:
 }  // namespace
 
 int cnn_hw(const input_t image[IMG_C][IMG_H][IMG_W], logit_t logits[FC_OUT]) {
-    static act1_t conv1[C1][H1][W1];
+    // Output channels computed in parallel per conv layer (step 4, NFR-008)
+    const int U1 = 8, U2 = 8, U3 = 4;
+
+    // Only the pooled activations are stored (conv + ReLU + maxpool fused)
     static act1_t pool1[C1][P1H][P1W];
-    static act2_t conv2[C2][H2][W2];
     static act2_t pool2[C2][P2H][P2W];
-    static act3_t conv3[C3][H3][W3];
     static act3_t pool3[C3][P3H][P3W];
 
-    conv3x3_relu<input_t, act1_t, IMG_C, C1, H1, W1>(image, CONV1_W, CONV1_B, conv1);
-    maxpool_same<act1_t, C1, H1, W1, P1H, P1W>(conv1, pool1);
-    conv3x3_relu<act1_t, act2_t, C1, C2, H2, W2>(pool1, CONV2_W, CONV2_B, conv2);
-    maxpool_same<act2_t, C2, H2, W2, P2H, P2W>(conv2, pool2);
-    conv3x3_relu<act2_t, act3_t, C2, C3, H3, W3>(pool2, CONV3_W, CONV3_B, conv3);
-    maxpool_same<act3_t, C3, H3, W3, P3H, P3W>(conv3, pool3);
+    // One memory bank per parallel output channel: weights, biases and pooled
+    // outputs split cyclically on the output-channel dimension
+#pragma HLS ARRAY_PARTITION variable=CONV1_W cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=CONV1_B cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=pool1 cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=CONV2_W cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=CONV2_B cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=pool2 cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=CONV3_W cyclic factor=4 dim=1
+#pragma HLS ARRAY_PARTITION variable=CONV3_B cyclic factor=4 dim=1
+#pragma HLS ARRAY_PARTITION variable=pool3 cyclic factor=4 dim=1
+
+    conv3x3_relu_pool<input_t, act1_t, IMG_C, C1, H1, W1, P1H, P1W, U1>(image, CONV1_W, CONV1_B, pool1);
+    conv3x3_relu_pool<act1_t, act2_t, C1, C2, H2, W2, P2H, P2W, U2>(pool1, CONV2_W, CONV2_B, pool2);
+    conv3x3_relu_pool<act2_t, act3_t, C2, C3, H3, W3, P3H, P3W, U3>(pool2, CONV3_W, CONV3_B, pool3);
 
     // Fully connected on the HWC-flattened pool3: index (h * W + w) * C + c
     acc_t scores[FC_OUT];
