@@ -113,7 +113,8 @@ vela/
 │   ├── models/
 │   │   ├── filters_hw.py       # Bit-exact integer models of the RTL filters
 │   │   ├── oled_hw.py          # Expected SPI traffic of the OLED (init + RGB565 pixels)
-│   │   └── pipeline_hw.py      # Board output model: RTL filter chain -> RGB565 (GUI HW view)
+│   │   ├── pipeline_hw.py      # Board output model: RTL filter chain -> RGB565 (GUI HW view)
+│   │   └── cnn_hw_model.py     # Bit-exact model of the ap_fixed CNN (TN004 formats)
 │   ├── tb/                     # File-driven Verilog testbenches (tb_<module>.v)
 │   │   └── spi_monitor.v       # Passive SPI decoder/checker (mode 0, SCLK period)
 │   └── tests/
@@ -121,14 +122,15 @@ vela/
 │       ├── test_rtl_*.py       # One co-simulation test file per RTL module
 │       ├── test_rtl_lint.py    # Verilator lint + Verilog-2005 check of every RTL file
 │       ├── hls_sim.py          # g++ build/run helper for the C++ CNN code
-│       └── test_hls_cnn_ref.py # C++ CNN reference vs golden model
+│       ├── test_hls_cnn_ref.py # C++ CNN reference vs golden model
+│       └── test_hls_cnn_hw.py  # ap_fixed CNN vs bit-exact model and golden model
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_params.h            # CNN dimensions
 │   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
-│   ├── cnn_hw.cpp              # CNN accelerator (ap_fixed) — to do
-│   ├── cnn_hw.h                # Interface & type definitions — to do
-│   ├── testbench.cpp           # Vitis HLS C simulation testbench — to do
+│   ├── cnn_hw.h / cnn_hw.cpp   # CNN accelerator in ap_fixed (TN004 types), HLS top function
+│   ├── testbench.cpp           # Vitis HLS C simulation testbench — to do (step 4)
 │   ├── tb/cnn_ref_main.cpp     # Batch runner of the reference (driven by pytest)
+│   ├── tb/cnn_hw_main.cpp      # Batch runner of the ap_fixed CNN (driven by pytest)
 │   └── generated/              # cnn_weights.h (make hls-weights, not tracked)
 ├── data/                       # Data files (tracked in git: tests run right after cloning)
 │   ├── CNN_coeff_3x3.txt       # Pre-trained weights (used by VELA)
@@ -246,7 +248,7 @@ gtkwave build/waves/test_rtl_grayscale__test_matches_model_with_valid_gaps/wave.
 make synth                         # all modules, ~6 min; reports in build/synth/
 make synth MODULES="sobel_filter"  # a subset
 
-# C++ CNN reference vs golden model (g++, no Vitis needed)
+# C++ CNN: double reference and ap_fixed version (g++ + Vitis ap_fixed headers)
 make hls-test
 
 # Requirements traceability matrix
@@ -283,8 +285,8 @@ make trace
 
 ### Phase 2b — HLS C++: CNN accelerator (Vitis HLS 2024.2)
 - [x] Port CNN to C++ double precision (reference): 1000/1000 predictions identical to Python, 76.0 % (`make hls-test`)
-- [x] Analyze value ranges for `ap_fixed` sizing (TN004: 16-bit weights/activations, round + saturate, 100 % agreement on 10 000 images)
-- [ ] Port to `ap_fixed` for Vitis HLS synthesis
+- [x] Analyze value ranges for `ap_fixed` sizing (TN004: 16-bit weights/activations, round + saturate, 99.99 % agreement on 10 000 images)
+- [x] Port to `ap_fixed` for Vitis HLS synthesis: bit-exact with the TN004 model, 99.99 % agreement and 74.47 % accuracy on 10 000 images (`make hls-test`)
 - [ ] Optimize with pipeline/unroll directives
 - [ ] Export CNN IP to Vivado
 

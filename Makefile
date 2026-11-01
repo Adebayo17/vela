@@ -77,8 +77,9 @@ rtl-lint:
 hls-weights:
 	$(PYTHON) tools/gen_weights_header.py
 
+# Référence C++ double + CNN ap_fixed (g++ et en-têtes Vitis, comme une C-simulation)
 hls-test:
-	$(PYTHON) -m pytest verif/tests/test_hls_cnn_ref.py -v --tb=short
+	$(PYTHON) -m pytest verif/tests/test_hls_cnn_ref.py verif/tests/test_hls_cnn_hw.py -v --tb=short
 
 # Plages de valeurs + types ap_fixed candidats sur les 10 000 images (TN004, ~3 min)
 cnn-fixed-point:

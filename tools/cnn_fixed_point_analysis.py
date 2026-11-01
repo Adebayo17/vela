@@ -13,7 +13,8 @@ Phase 2b, step 2: size the ap_fixed types of the HLS CNN.
    default; rounding = AP_RND), with saturation, and measures the agreement
    with the float model and the accuracy.
 
-The batched model is checked against python/cnn.py before use.
+The batched model (verif/models/cnn_hw_model.py) is checked against
+python/cnn.py before use.
 
 Usage:
     python tools/cnn_fixed_point_analysis.py [--images N] [--report FILE]
@@ -23,8 +24,6 @@ Usage:
 """
 
 import argparse
-
-import math
 import sys
 import time
 from pathlib import Path
@@ -33,93 +32,13 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python"))
+sys.path.insert(0, str(ROOT / "verif" / "models"))
 
 from cnn import cnn_forward                    # noqa: E402
 from data_loader import load_dataset           # noqa: E402
 from weights_loader import load_weights        # noqa: E402
-
-CHUNK = 100   # images per batch (memory of the conv2 patches)
-
-
-# ─── Batched float model (same computation as python/cnn.py) ─────────────────
-
-def conv3x3_same(x, w, b):
-    """x (N, Cin, H, W), w (Cout, Cin, 3, 3), b (Cout,) -> (N, Cout, H, W)."""
-    n, cin, h, wd = x.shape
-    xp = np.pad(x, ((0, 0), (0, 0), (1, 1), (1, 1)))
-    # im2col: (N, H, W, Cin, 3, 3) -> (N*H*W, Cin*9), then one BLAS matrix product
-    patches = np.stack([xp[:, :, m:m + h, k:k + wd] for m in range(3) for k in range(3)], axis=-1)
-    cols = patches.transpose(0, 2, 3, 1, 4).reshape(n * h * wd, cin * 9)
-    out = cols @ w.reshape(w.shape[0], cin * 9).T + b
-    return out.reshape(n, h, wd, -1).transpose(0, 3, 1, 2)
-
-
-def conv3x3_abs_bound(x, w, b):
-    """Largest possible partial sum of each accumulator: sum |x w| + |b|."""
-    return conv3x3_same(np.abs(x), np.abs(w), np.abs(b))
-
-
-def maxpool_same(x):
-    """3x3 / stride 2 TensorFlow SAME maxpool: padding (-inf) at bottom/right."""
-    n, c, h, w = x.shape
-    ho, wo = math.ceil(h / 2), math.ceil(w / 2)
-    ph, pw = (ho - 1) * 2 + 3 - h, (wo - 1) * 2 + 3 - w
-    xp = np.pad(x, ((0, 0), (0, 0), (0, ph), (0, pw)), constant_values=-np.inf)
-    out = np.full((n, c, ho, wo), -np.inf)
-    for u in range(3):
-        for v in range(3):
-            out = np.maximum(out, xp[:, :, u:u + 2 * ho:2, v:v + 2 * wo:2])
-    return out
-
-
-def forward(images, w, quant_act=None, record=None):
-    """
-    Batched forward pass. quant_act(name, tensor) quantizes the activations
-    stored between layers (None = float). record(name, tensor) collects values.
-    Returns the logits (N, 10).
-    """
-    q = quant_act or (lambda name, t: t)
-    rec = record
-    x = q("input", images)
-    if rec:
-        rec("input", x)
-    for i, (wk, bk) in enumerate([("conv1_w", "conv1_b"), ("conv2_w", "conv2_b"),
-                                  ("conv3_w", "conv3_b")], start=1):
-        if rec:   # accumulator bound only when recording (doubles the conv cost)
-            rec(f"acc{i}", conv3x3_abs_bound(x, w[wk], w[bk]))
-        c = conv3x3_same(x, w[wk], w[bk])
-        x = q(f"pool{i}", maxpool_same(np.maximum(c, 0.0)))
-        if rec:
-            rec(f"conv{i}", c)
-            rec(f"pool{i}", x)
-    vec = x.transpose(0, 2, 3, 1).reshape(x.shape[0], -1)      # HWC flatten
-    logits = vec @ w["fc_w"].T + w["fc_b"]
-    if rec:
-        rec("acc_fc", np.abs(vec) @ np.abs(w["fc_w"]).T + np.abs(w["fc_b"]))
-        rec("logits", logits)
-    return logits
-
-
-def run_batched(images, w, **kw):
-    return np.concatenate([forward(images[i:i + CHUNK], w, **kw)
-                           for i in range(0, len(images), CHUNK)])
-
-
-# ─── Fixed-point helpers ─────────────────────────────────────────────────────
-
-def int_bits(max_abs):
-    """ap_fixed integer bits I (sign included) so that |v| <= max_abs fits."""
-    return max(1, math.floor(math.log2(max_abs)) + 2) if max_abs > 0 else 1
-
-
-def quantize(t, width, ibits, mode):
-    """Emulate ap_fixed<width, ibits, mode, AP_SAT>: mode 'trn' (floor) or 'rnd'."""
-    step = 2.0 ** (ibits - width)
-    scaled = t / step
-    scaled = np.floor(scaled) if mode == "trn" else np.floor(scaled + 0.5)
-    lo, hi = -(2 ** (width - 1)), 2 ** (width - 1) - 1
-    return np.clip(scaled, lo, hi) * step
-
+from cnn_hw_model import (CHUNK, forward, int_bits, quantize,   # noqa: E402
+                          run_batched)
 
 # ─── Analysis ────────────────────────────────────────────────────────────────
 
@@ -188,9 +107,9 @@ def main(n_images=1000, report_path=ROOT / "build" / "cnn_fixed_point.md", confi
         agree = float((pred_q == pred_f).mean())
         acc = float((pred_q == labels).mean())
         results.append((ww, wa, mode, agree, acc))
-        out.append(f"| {ww} | {wa} | {mode} | {100 * agree:.1f} % | {100 * acc:.1f} % |")
+        out.append(f"| {ww} | {wa} | {mode} | {100 * agree:.2f} % | {100 * acc:.2f} % |")
         print(f"weights {ww:2d} bits, activations {wa:2d} bits, {mode}: "
-              f"agreement {100 * agree:5.1f} %, accuracy {100 * acc:5.1f} %", flush=True)
+              f"agreement {100 * agree:6.2f} %, accuracy {100 * acc:6.2f} %", flush=True)
 
     out += ["", f"Run time: {time.time() - t0:.0f} s"]
     Path(report_path).parent.mkdir(parents=True, exist_ok=True)
