@@ -5,7 +5,10 @@
 #   csim   C-simulation with hls/testbench.cpp (bit-exact vs the TN004 model)
 #   synth  C synthesis: latency and resource report
 #   cosim  C/RTL co-simulation with the same testbench (VELA-NFR-007)
-#   export IP packaging for Vivado (Phase 3)
+#   export IP packaging for Vivado (Phase 3), build/hls/cnn_hw_ip.zip
+# The out-of-context implementation is a separate Vivado run
+# (tools/hls_impl.tcl, `make hls-impl`): Vitis would otherwise stay in memory
+# while it runs Vivado (export_design -flow impl).
 #
 # Environment:
 #   VELA_HLS_STEPS  default "csim synth"
@@ -43,6 +46,6 @@ if {[lsearch $steps cosim] >= 0} {
     cosim_design -argv "$data $n" -rtl verilog
 }
 if {[lsearch $steps export] >= 0} {
-    export_design -format ip_catalog
+    export_design -format ip_catalog -output [file join $data cnn_hw_ip.zip]
 }
 exit

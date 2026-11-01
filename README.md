@@ -123,7 +123,8 @@ vela/
 │       ├── test_rtl_lint.py    # Verilator lint + Verilog-2005 check of every RTL file
 │       ├── hls_sim.py          # g++ build/run helper for the C++ CNN code
 │       ├── test_hls_cnn_ref.py # C++ CNN reference vs golden model
-│       └── test_hls_cnn_hw.py  # ap_fixed CNN vs bit-exact model and golden model
+│       ├── test_hls_cnn_hw.py  # ap_fixed CNN vs bit-exact model and golden model
+│       └── test_cnn_ip_interface.py # PS <-> IP data contract (raw codes, AXI4-Lite packing)
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_params.h            # CNN dimensions
 │   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
@@ -145,6 +146,8 @@ vela/
 │   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
 │   ├── gen_hls_tb_data.py      # Stimuli + expected results of the Vitis HLS testbench
 │   ├── hls.tcl                 # Vitis HLS flow: C-sim, synthesis, C/RTL co-sim, export
+│   ├── hls_impl.tcl            # Vivado OOC implementation of the generated CNN RTL
+│   ├── hls_impl_summary.py     # CNN IP resources / timing check (NFR-009, NFR-010)
 │   ├── synth.tcl               # Vivado OOC synthesis + P&R of each module (make synth)
 │   ├── synth_summary.py        # Synthesis summary + NFR-002/004 check
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
@@ -154,7 +157,8 @@ vela/
 │       ├── TN001.md            # Technical note: CHW vs HWC memory layouts
 │       ├── TN002.md            # Technical note: RTL verification method (co-simulation)
 │       ├── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
-│       └── TN004.md            # Technical note: CNN fixed-point sizing (ranges, ap_fixed types)
+│       ├── TN004.md            # Technical note: CNN fixed-point sizing (ranges, ap_fixed types)
+│       └── TN005.md            # Technical note: CNN accelerator IP (architecture, AXI4-Lite map, results)
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
@@ -257,6 +261,11 @@ make hls-test
 make hls-csim
 make hls-synth
 make hls-cosim
+make hls-export   # IP for Vivado: build/hls/cnn_hw_ip.zip
+make hls-impl     # OOC implementation of the IP (Vivado), NFR-009 / NFR-010
+
+# Heavy EDA targets run in a memory-capped systemd scope (default 4 GB):
+make hls-impl MEM_LIMIT=6G    # change the cap; MEM_LIMIT= disables it
 
 # Requirements traceability matrix
 make trace
@@ -295,7 +304,7 @@ make trace
 - [x] Analyze value ranges for `ap_fixed` sizing (TN004: 16-bit weights/activations, round + saturate, 99.99 % agreement on 10 000 images)
 - [x] Port to `ap_fixed` for Vitis HLS synthesis: bit-exact with the TN004 model, 99.99 % agreement and 74.47 % accuracy on 10 000 images (`make hls-test`)
 - [x] Optimize with pipeline/unroll directives: 8 output channels in parallel + maxpool fused into the convolutions → 613 664 cycles (6.14 ms), 74 BRAM18 (26 %), 21 DSP (9 %), 20 % LUT (`make hls-synth`)
-- [ ] Export CNN IP to Vivado
+- [x] Export CNN IP to Vivado: AXI4-Lite interface, `build/hls/cnn_hw_ip.zip`; C/RTL co-sim bit-exact, 5.98 ms; OOC implementation 5 % LUT, 29 % BRAM, 10 % DSP, WNS +2.137 ns at 100 MHz (TN005)
 
 ### Phase 3 — FPGA integration (Vivado 2024.2)
 - [ ] Block design: Zynq PS + CNN IP + filter IPs + OLED controller

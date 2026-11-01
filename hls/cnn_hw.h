@@ -26,7 +26,9 @@ typedef ap_fixed<16, 7, AP_RND, AP_SAT> act3_t;     // conv3 / pool3, +-64
 typedef ap_fixed<40, 14>                acc_t;      // accumulators, exact
 typedef ap_fixed<16, 7, AP_RND, AP_SAT> logit_t;    // FC outputs, +-64
 
-// Top function (future HLS IP).
+// Top function = HLS IP. Interface: one AXI4-Lite slave (bundle "control")
+// holding the control register (ap_start / ap_done), the image and logits
+// memory windows and the return value (see cnn_hw.cpp, TN005).
 //   image : preprocessed image (center crop + per-image normalization, done
 //           by the PS), CHW
 //   logits: 10 class scores (for the probability computed by the PS)

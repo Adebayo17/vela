@@ -1,6 +1,14 @@
 # bash, not /bin/sh (dash): Vitis' settings64.sh uses `source`
 SHELL := /bin/bash
 
+# Heavy EDA runs (Vitis, Vivado) in their own systemd scope with a memory cap:
+# on a memory shortage only that run is killed, not the terminal (and the
+# Claude Code session) it was started from — systemd-oomd kills a whole
+# terminal scope under memory pressure (incident of 2026-11-01).
+# MEM_LIMIT= (empty) disables the wrapper.
+MEM_LIMIT ?= 4G
+LIMITED = $(if $(MEM_LIMIT),systemd-run --user --scope --quiet -p MemoryMax=$(MEM_LIMIT) -p MemorySwapMax=1G,)
+
 # Use the project venv (created by `make setup`) when it exists, else system python3.
 # Absolute path: some targets `cd python` first.
 PYTHON := $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
@@ -89,6 +97,8 @@ hls-test:
 #   make hls-csim     C-simulation (~1 min)
 #   make hls-synth    C-simulation + synthèse, rapport de latence / ressources (~3 min)
 #   make hls-cosim    synthèse + co-simulation C/RTL sur HLS_N images (long)
+#   make hls-export   synthèse + export de l'IP (build/hls/cnn_hw_ip.zip)
+#   make hls-impl     export + implémentation Vivado hors contexte (NFR-009/010)
 VITIS_SETTINGS ?= $(HOME)/tools/Xilinx/Vitis/2024.2/settings64.sh
 HLS_N ?= 20
 HLS_REPORT := build/hls/cnn_proj/sol1/syn/report/cnn_hw_csynth.rpt
@@ -98,7 +108,7 @@ hls-data: hls-weights
 
 define run_hls
 	cd build && . $(VITIS_SETTINGS) >/dev/null && \
-		VELA_HLS_STEPS="$(1)" VELA_HLS_N=$(HLS_N) vitis-run --mode hls --tcl ../tools/hls.tcl \
+		VELA_HLS_STEPS="$(1)" VELA_HLS_N=$(HLS_N) $(LIMITED) vitis-run --mode hls --tcl ../tools/hls.tcl \
 		> hls_$(2).log 2>&1 || (tail -30 hls_$(2).log; exit 1)
 	@grep -E "PASS:|FAIL:|MISMATCH" build/hls_$(2).log || true
 endef
@@ -114,7 +124,19 @@ hls-synth: hls-data
 hls-cosim: HLS_N = 3
 hls-cosim: hls-data
 	$(call run_hls,cosim,cosim)
-	@grep -E "Pass|Fail|Latency" build/hls/cnn_proj/sol1/sim/report/cnn_hw_cosim.rpt 2>/dev/null | head -5 || true
+	@grep -E "Verilog\|" build/hls/cnn_proj/sol1/sim/report/cnn_hw_cosim.rpt 2>/dev/null || true
+
+hls-export: hls-data
+	$(call run_hls,synth export,export)
+	@ls -la build/hls/cnn_hw_ip.zip
+
+# Implémentation hors contexte du RTL généré, dans un Vivado séparé de Vitis
+hls-impl: hls-export
+	cd build && $(LIMITED) vivado -mode batch -nojournal -nolog \
+		-source ../tools/hls_impl.tcl -tclargs hls/cnn_proj/sol1/syn/verilog hls/impl \
+		> hls_impl.log 2>&1 || (tail -30 hls_impl.log; exit 1)
+	@grep "^SUMMARY" build/hls_impl.log
+	$(PYTHON) tools/hls_impl_summary.py build/hls/impl
 
 # Plages de valeurs + types ap_fixed candidats sur les 10 000 images (TN004, ~3 min)
 cnn-fixed-point:
@@ -130,7 +152,7 @@ cnn-fixed-point:
 
 synth:
 	cd build 2>/dev/null || mkdir -p build
-	cd build && vivado -mode batch -nojournal -nolog \
+	cd build && $(LIMITED) vivado -mode batch -nojournal -nolog \
 		-source ../tools/synth.tcl -tclargs synth $(MODULES) > synth.log 2>&1 \
 		|| (tail -30 synth.log; exit 1)
 	@grep "^SUMMARY" build/synth.log

@@ -112,6 +112,27 @@ conv_cb:
 }  // namespace
 
 int cnn_hw(const input_t image[IMG_C][IMG_H][IMG_W], logit_t logits[FC_OUT]) {
+    // IP interface (step 5, option A): a single AXI4-Lite slave. The PS writes
+    // the image and reads the logits through memory windows of the register
+    // map, starts the IP and polls ap_done in the control register; the
+    // predicted class is the return value register.
+#pragma HLS INTERFACE mode=s_axilite port=image bundle=control
+#pragma HLS INTERFACE mode=s_axilite port=logits bundle=control
+#pragma HLS INTERFACE mode=s_axilite port=return bundle=control
+
+    // Local copy of the image: the AXI4-Lite memory window has 32-bit words
+    // shared with the bus; reading it directly from the conv1 pipeline made
+    // that pipeline 76 stages deep (vs 7 for the other layers) and doubled
+    // conv1's latency. The copy costs IMG_C*IMG_H*IMG_W = 1728 cycles.
+    static input_t img[IMG_C][IMG_H][IMG_W];
+copy_image:
+    for (int c = 0; c < IMG_C; c++)
+        for (int y = 0; y < IMG_H; y++)
+            for (int x = 0; x < IMG_W; x++) {
+#pragma HLS PIPELINE II=1
+                img[c][y][x] = image[c][y][x];
+            }
+
     // Output channels computed in parallel per conv layer (step 4, NFR-008)
     const int U1 = 8, U2 = 8, U3 = 4;
 
@@ -132,7 +153,7 @@ int cnn_hw(const input_t image[IMG_C][IMG_H][IMG_W], logit_t logits[FC_OUT]) {
 #pragma HLS ARRAY_PARTITION variable=CONV3_B cyclic factor=4 dim=1
 #pragma HLS ARRAY_PARTITION variable=pool3 cyclic factor=4 dim=1
 
-    conv3x3_relu_pool<input_t, act1_t, IMG_C, C1, H1, W1, P1H, P1W, U1>(image, CONV1_W, CONV1_B, pool1);
+    conv3x3_relu_pool<input_t, act1_t, IMG_C, C1, H1, W1, P1H, P1W, U1>(img, CONV1_W, CONV1_B, pool1);
     conv3x3_relu_pool<act1_t, act2_t, C1, C2, H2, W2, P2H, P2W, U2>(pool1, CONV2_W, CONV2_B, pool2);
     conv3x3_relu_pool<act2_t, act3_t, C2, C3, H3, W3, P3H, P3W, U3>(pool2, CONV3_W, CONV3_B, pool3);
 

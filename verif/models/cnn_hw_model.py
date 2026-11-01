@@ -156,3 +156,34 @@ def emulate_tn004(images, weights):
     lw, li = TN004_FORMATS["logit"]
     return {"scores": scores, "logits": quantize(scores, lw, li, "rnd"),
             "pred": scores.argmax(axis=1), **first}
+
+
+# ─── PS side: what the software writes into the IP (VELA-TN-005) ────────────
+
+def input_raw(images):
+    """
+    Raw 16-bit codes of input_t (ap_fixed<16, 5, AP_RND, AP_SAT>) for
+    preprocessed images: round(x * 2^11) with ties rounded up, saturated to
+    [-32768, 32767]. raw / 2^11 equals quantize(x, 16, 5, "rnd").
+    """
+    width, ibits = TN004_FORMATS["input"]
+    scaled = np.floor(np.asarray(images, dtype=np.float64) * 2.0 ** (width - ibits) + 0.5)
+    return np.clip(scaled, -(2 ** (width - 1)), 2 ** (width - 1) - 1).astype(np.int16)
+
+
+def pack_image_words(image):
+    """
+    32-bit words of the AXI4-Lite image window (offset 0x1000) for one image
+    (3, 24, 24): CHW order, two values per word, element 2n in bits 15:0 and
+    element 2n+1 in bits 31:16 (Vitis HLS register map).
+    """
+    raw = input_raw(image).reshape(-1).view(np.uint16).astype(np.uint32)
+    return raw[0::2] | (raw[1::2] << 16)
+
+
+def unpack_logit_words(words):
+    """10 logit_t values from the 5 words of the logits window (offset 0x20)."""
+    words = np.asarray(words, dtype=np.uint32)
+    halves = np.stack([words & 0xFFFF, words >> 16], axis=1).reshape(-1).astype(np.uint16)
+    width, ibits = TN004_FORMATS["logit"]
+    return halves.view(np.int16).astype(np.float64) / 2.0 ** (width - ibits)
