@@ -12,6 +12,13 @@ Two operating modes, selectable via on-board switches and buttons:
 
 ## Architecture overview
 
+Visual guide (methodology, prototyping platform, CNN inference chain, animated):
+[docs/TN/TN006.md](docs/TN/TN006.md).
+
+<p align="center">
+    <img src="docs/diagrams/hw_methodology.svg" alt="HW methodology steps applied to VELA" width="900">
+</p>
+
 ```
                      ┌─────────────────────────────────────────────┐
                      │              Zynq XC7Z020 SoC               │
@@ -124,7 +131,8 @@ vela/
 │       ├── hls_sim.py          # g++ build/run helper for the C++ CNN code
 │       ├── test_hls_cnn_ref.py # C++ CNN reference vs golden model
 │       ├── test_hls_cnn_hw.py  # ap_fixed CNN vs bit-exact model and golden model
-│       └── test_cnn_ip_interface.py # PS <-> IP data contract (raw codes, AXI4-Lite packing)
+│       ├── test_cnn_ip_interface.py # PS <-> IP data contract (raw codes, AXI4-Lite packing)
+│       └── test_diagrams.py    # docs/diagrams SVGs are valid XML and up to date
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_params.h            # CNN dimensions
 │   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
@@ -143,6 +151,7 @@ vela/
 ├── tools/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
 │   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
+│   ├── gen_diagrams.py         # SVG diagrams of docs/diagrams (make diagrams)
 │   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
 │   ├── gen_hls_tb_data.py      # Stimuli + expected results of the Vitis HLS testbench
 │   ├── hls.tcl                 # Vitis HLS flow: C-sim, synthesis, C/RTL co-sim, export
@@ -153,12 +162,14 @@ vela/
 │   └── vela_testing.py         # Shared @requirement decorator for all test suites
 ├── docs/
 │   ├── requirement/            # Requirements (VELA-FR-xxx)
+│   ├── diagrams/               # SVG diagrams, some animated (make diagrams, tools/gen_diagrams.py)
 │   └── TN/
 │       ├── TN001.md            # Technical note: CHW vs HWC memory layouts
 │       ├── TN002.md            # Technical note: RTL verification method (co-simulation)
 │       ├── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
 │       ├── TN004.md            # Technical note: CNN fixed-point sizing (ranges, ap_fixed types)
-│       └── TN005.md            # Technical note: CNN accelerator IP (architecture, AXI4-Lite map, results)
+│       ├── TN005.md            # Technical note: CNN accelerator IP (architecture, AXI4-Lite map, results)
+│       └── TN006.md            # Visual guide: HW methodology, platform, CNN inference chain (FR)
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```

@@ -159,6 +159,13 @@ synth:
 	$(PYTHON) tools/synth_summary.py build/synth
 
 
+# ─── Documentation ───────────────────────────────────────────────────────────
+# Schémas SVG de docs/diagrams (certains animés), générés par script
+
+diagrams:
+	$(PYTHON) tools/gen_diagrams.py
+
+
 # ─── Traçabilité ─────────────────────────────────────────────────────────────
 
 trace:
