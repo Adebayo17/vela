@@ -1,0 +1,6 @@
+# Coverage config for `make coverage`
+# Entry points (CLI, GUI) are exercised manually, not by the test suites.
+[run]
+omit =
+    python/main.py
+    python/gui_simulator.py

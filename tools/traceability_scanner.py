@@ -253,16 +253,25 @@ def generate_report(
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+def _merge(dicts) -> dict[str, list[dict]]:
+    """Merge several requirement_id -> refs dicts (one per scanned directory)."""
+    merged = defaultdict(list)
+    for d in dicts:
+        for req_id, refs in d.items():
+            merged[req_id].extend(refs)
+    return dict(merged)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="VELA traceability scanner — requirements ↔ tests matrix"
     )
     parser.add_argument("--srs",    required=True,
                         help="Path to SRS_VELA.md")
-    parser.add_argument("--tests",  required=True,
-                        help="Directory containing test_*.py files")
-    parser.add_argument("--source", default=None,
-                        help="Directory containing source .py files "
+    parser.add_argument("--tests",  required=True, nargs="+",
+                        help="Directories containing test_*.py files")
+    parser.add_argument("--source", default=None, nargs="+",
+                        help="Directories containing source .py files "
                              "(scanned for # REQ: comments)")
     parser.add_argument("--output", default="traceability_report.md",
                         help="Output report path")
@@ -280,14 +289,14 @@ def main():
 
     # 2. Extract test coverage
     print(f"[2] Scanning tests: {args.tests}")
-    test_cov = extract_requirements_from_tests(args.tests)
+    test_cov = _merge(extract_requirements_from_tests(d) for d in args.tests)
     print(f"    Found references to {len(test_cov)} unique requirement IDs")
 
     # 3. Extract source references
     source_refs = {}
     if args.source:
         print(f"[3] Scanning source: {args.source}")
-        source_refs = extract_requirements_from_source(args.source)
+        source_refs = _merge(extract_requirements_from_source(d) for d in args.source)
         print(f"    Found # REQ: comments for {len(source_refs)} IDs")
 
     # 4. Generate report

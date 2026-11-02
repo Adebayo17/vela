@@ -1,3 +1,12 @@
 *.drawio
 __pycache__
 .pytest_cache
+.venv/
+.coverage
+docs/requirement/traceability_report.md
+JOURNAL.md
+build/
+hls/generated/
+
+# Claude Code local settings (never versioned)
+.claude/

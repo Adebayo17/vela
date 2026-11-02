@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 520" width="1180" height="520" role="img" aria-label="Mise à plat HWC, couche dense et softmax">
+<title>Mise à plat HWC, couche dense et softmax</title>
+<style>
+  text { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; }
+  .mono { font-family: DejaVu Sans Mono, Menlo, Consolas, monospace; }
+  .muted { fill: #5b676b; }
+  @keyframes grow { 0%, 45% { transform: scaleX(0); } 70%, 100% { transform: scaleX(1); } }
+  .bar { animation: grow 9s ease-out infinite; transform-box: view-box; }
+  @keyframes pos { 0%, 10.61% { opacity: 1; } 11.11%, 100% { opacity: 0.35; } }
+  .pos { animation: pos 5.4s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b676b"/></marker><marker id="arrowA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a4562a"/></marker></defs>
+<rect width="1180" height="520" fill="#ffffff"/>
+<text x="30" y="36" font-size="19" text-anchor="start" font-weight="bold" fill="#1f2a2e" >Mise à plat (HWC), couche dense et softmax</text>
+<text x="30" y="62" font-size="13" text-anchor="start" font-weight="normal" class="muted" fill="#1f2a2e" >pool3 (20×3×3) → vecteur de 180 valeurs dans l'ordre (h, w, c) → S = M·v + b (10 logits) → softmax → probabilités</text>
+<g class="pos" style="animation-delay:0.0s"><rect x="60" y="120" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="77.0" y="135" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(0,0)</text><text x="77.0" y="148" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:0.6s"><rect x="104" y="120" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="121.0" y="135" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(0,1)</text><text x="121.0" y="148" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:1.2s"><rect x="148" y="120" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="165.0" y="135" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(0,2)</text><text x="165.0" y="148" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:1.8s"><rect x="60" y="164" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="77.0" y="179" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(1,0)</text><text x="77.0" y="192" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:2.4s"><rect x="104" y="164" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="121.0" y="179" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(1,1)</text><text x="121.0" y="192" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:3.0s"><rect x="148" y="164" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="165.0" y="179" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(1,2)</text><text x="165.0" y="192" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:3.6s"><rect x="60" y="208" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="77.0" y="223" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(2,0)</text><text x="77.0" y="236" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:4.2s"><rect x="104" y="208" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="121.0" y="223" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(2,1)</text><text x="121.0" y="236" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<g class="pos" style="animation-delay:4.8s"><rect x="148" y="208" width="34" height="34" rx="3" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.4" /><text x="165.0" y="223" font-size="10" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >(2,2)</text><text x="165.0" y="236" font-size="9.5" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >20 c</text></g>
+<text x="126" y="270" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2a2e" >pool3 : 3×3 positions</text>
+<text x="126" y="288" font-size="12" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >× 20 canaux</text>
+<line x1="200" y1="180" x2="288" y2="180" stroke="#a4562a" stroke-width="1.6" marker-end="url(#arrowA)" />
+<text x="250.0" y="170" font-size="12" text-anchor="middle" font-weight="normal" fill="#a4562a" >reshape</text>
+<g class="pos" style="animation-delay:0.0s"><rect x="300" y="100" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="119" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(0,0) c=0..19  → v[0..19]</text></g>
+<g class="pos" style="animation-delay:0.6s"><rect x="300" y="130" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="149" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(0,1) c=0..19  → v[20..39]</text></g>
+<g class="pos" style="animation-delay:1.2s"><rect x="300" y="160" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="179" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(0,2) c=0..19  → v[40..59]</text></g>
+<g class="pos" style="animation-delay:1.8s"><rect x="300" y="190" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="209" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(1,0) c=0..19  → v[60..79]</text></g>
+<g class="pos" style="animation-delay:2.4s"><rect x="300" y="220" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="239" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(1,1) c=0..19  → v[80..99]</text></g>
+<g class="pos" style="animation-delay:3.0s"><rect x="300" y="250" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="269" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(1,2) c=0..19  → v[100..119]</text></g>
+<g class="pos" style="animation-delay:3.6s"><rect x="300" y="280" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="299" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(2,0) c=0..19  → v[120..139]</text></g>
+<g class="pos" style="animation-delay:4.2s"><rect x="300" y="310" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="329" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(2,1) c=0..19  → v[140..159]</text></g>
+<g class="pos" style="animation-delay:4.8s"><rect x="300" y="340" width="26" height="28" rx="2" fill="#e7f1ea" stroke="#2f6f4e" stroke-width="1.2" /><text x="334" y="359" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >(2,2) c=0..19  → v[160..179]</text></g>
+<text x="313" y="394" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2a2e" >v : 180</text>
+<text x="313" y="412" font-size="11.5" text-anchor="middle" font-weight="normal" class="mono muted" fill="#1f2a2e" >index = (h·3 + w)·20 + c</text>
+<rect x="620" y="160" width="120" height="130" rx="8" fill="#f6e9df" stroke="#a4562a" stroke-width="1.6" />
+<text x="680" y="200" font-size="14" text-anchor="middle" font-weight="bold" fill="#1f2a2e" >S = M·v + b</text>
+<text x="680" y="224" font-size="12" text-anchor="middle" font-weight="normal" class="mono" fill="#1f2a2e" >M : 10×180</text>
+<text x="680" y="244" font-size="12" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >1 800 MAC</text>
+<text x="680" y="264" font-size="12" text-anchor="middle" font-weight="normal" class="muted" fill="#1f2a2e" >(+ 10 biais)</text>
+<line x1="540" y1="225" x2="612" y2="225" stroke="#a4562a" stroke-width="1.6" marker-end="url(#arrowA)" />
+<line x1="740" y1="225" x2="790" y2="225" stroke="#a4562a" stroke-width="1.6" marker-end="url(#arrowA)" />
+<text x="765" y="214" font-size="11" text-anchor="middle" font-weight="normal" fill="#a4562a" >logits</text>
+<text x="800" y="96" font-size="12" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >softmax(z)_i = exp(z_i) / Σ_j exp(z_j)</text>
+<text x="870" y="127" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >airplane</text>
+<rect x="878" y="115" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="115" width="1.5" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="127" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >0.4 %</text>
+<text x="870" y="153" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >automobile</text>
+<rect x="878" y="141" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="141" width="1.5" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="153" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >0.3 %</text>
+<text x="870" y="179" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >bird</text>
+<rect x="878" y="167" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="167" width="2.5" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="179" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >1.3 %</text>
+<text x="870" y="205" font-size="11.5" text-anchor="end" font-weight="bold" fill="#1f2a2e" >cat</text>
+<rect x="878" y="193" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="193" width="147.6" height="16" rx="3" fill="#a4562a" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="205" font-size="11" text-anchor="start" font-weight="bold" class="mono" fill="#1f2a2e" >73.8 %</text>
+<text x="870" y="231" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >deer</text>
+<rect x="878" y="219" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="219" width="2.0" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="231" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >1.0 %</text>
+<text x="870" y="257" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >dog</text>
+<rect x="878" y="245" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="245" width="23.2" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="257" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >11.6 %</text>
+<text x="870" y="283" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >frog</text>
+<rect x="878" y="271" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="271" width="10.3" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="283" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >5.2 %</text>
+<text x="870" y="309" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >horse</text>
+<rect x="878" y="297" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="297" width="1.7" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="309" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >0.8 %</text>
+<text x="870" y="335" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >ship</text>
+<rect x="878" y="323" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="323" width="10.6" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="335" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >5.3 %</text>
+<text x="870" y="361" font-size="11.5" text-anchor="end" font-weight="normal" fill="#1f2a2e" >truck</text>
+<rect x="878" y="349" width="200" height="16" rx="3" fill="#f1f3f4" stroke="none" stroke-width="0" />
+<rect x="878" y="349" width="1.5" height="16" rx="3" fill="#9aa4a8" class="bar" style="transform-origin:878px 0"/>
+<text x="1084" y="361" font-size="11" text-anchor="start" font-weight="normal" class="mono" fill="#1f2a2e" >0.3 %</text>
+<rect x="30" y="430" width="1120" height="70" rx="8" fill="#f6e9df" stroke="#a4562a" stroke-width="1.2" />
+<text x="46" y="454" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2a2e" >Exemple réel : image de test n°0 (golden model) → « cat » à 73.8 %.</text>
+<text x="46" y="474" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2a2e" >Dans VELA, l'IP calcule les logits et la classe (argmax, exact) ; l'ARM calcule la probabilité affichée sur l'OLED (TN004 §6, TN005 §5).</text>
+<text x="46" y="492" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2a2e" >L'ordre HWC de la mise à plat est imposé par l'ordre d'apprentissage des poids M (TN001).</text>
+</svg>
