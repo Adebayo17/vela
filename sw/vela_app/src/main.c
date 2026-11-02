@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 
+#include "diskio.h"
 #include "ff.h"
 #include "xil_printf.h"
 
@@ -54,6 +55,69 @@ static const char *const FILTER_SHORT[VELA_MODE_COUNT] = {
 static FATFS fs;
 static FIL dataset;
 static uint8_t record[VELA_RECORD_BYTES];
+
+/*
+ * SD card diagnosis after FR_NO_FILESYSTEM: raw sector 0 (MBR) and the first
+ * sector of partition 1. The Zynq BootROM and FatFs need an MBR partition
+ * table with a FAT16 / FAT32 partition: type 0xEE = GPT (protective MBR),
+ * 0x07 = exFAT or NTFS, 0x0B / 0x0C = FAT32, 0x06 / 0x0E = FAT16.
+ */
+static void sd_diagnose(void)
+{
+    static BYTE sector[512] __attribute__((aligned(32)));
+    char fs[9] = {0};
+    DWORD lba;
+    int p;
+
+    if (disk_initialize(0) & STA_NOINIT || disk_read(0, sector, 0, 1) != RES_OK) {
+        xil_printf("  sector 0: read failed\r\n");
+        return;
+    }
+    xil_printf("  sector 0: signature %02x%02x (55aa expected)\r\n", sector[510], sector[511]);
+    for (p = 0; p < 4; p++) {
+        const BYTE *e = sector + 446 + 16 * p;
+        lba = e[8] | (e[9] << 8) | (e[10] << 16) | ((DWORD)e[11] << 24);
+        xil_printf("  partition %d: type 0x%02x, first sector %u\r\n", p + 1, e[4], (unsigned)lba);
+    }
+    lba = sector[454] | (sector[455] << 8) | (sector[456] << 16) | ((DWORD)sector[457] << 24);
+    if (lba && disk_read(0, sector, lba, 1) == RES_OK) {
+        for (p = 0; p < 8; p++)                       /* OEM name: "EXFAT   ", "NTFS    "... */
+            fs[p] = (sector[3 + p] >= 32 && sector[3 + p] < 127) ? (char)sector[3 + p] : '.';
+        xil_printf("  partition 1 boot sector: OEM name \"%s\"", fs);
+        for (p = 0; p < 8; p++)                       /* FAT32 type string at offset 82 */
+            fs[p] = (sector[82 + p] >= 32 && sector[82 + p] < 127) ? (char)sector[82 + p] : '.';
+        xil_printf(", FAT32 field \"%s\"\r\n", fs);
+        /* BPB fields checked by FatFs before accepting the volume */
+        xil_printf("  BPB: jump %02x, signature %02x%02x, bytes/sector %u, sectors/cluster %u,\r\n",
+                   sector[0], sector[510], sector[511],
+                   (unsigned)(sector[11] | (sector[12] << 8)), (unsigned)sector[13]);
+        xil_printf("       reserved %u, FATs %u, root entries %u, total16 %u, FAT size16 %u,\r\n",
+                   (unsigned)(sector[14] | (sector[15] << 8)), (unsigned)sector[16],
+                   (unsigned)(sector[17] | (sector[18] << 8)),
+                   (unsigned)(sector[19] | (sector[20] << 8)),
+                   (unsigned)(sector[22] | (sector[23] << 8)));
+        xil_printf("       total32 %u, FAT size32 %u, version %u, root cluster %u\r\n",
+                   (unsigned)(sector[32] | (sector[33] << 8) | (sector[34] << 16) | ((DWORD)sector[35] << 24)),
+                   (unsigned)(sector[36] | (sector[37] << 8) | (sector[38] << 16) | ((DWORD)sector[39] << 24)),
+                   (unsigned)(sector[42] | (sector[43] << 8)),
+                   (unsigned)(sector[44] | (sector[45] << 8) | (sector[46] << 16) | ((DWORD)sector[47] << 24)));
+        /* The FAT type is set by the cluster count only (Microsoft FAT spec):
+         * < 65 525 clusters is FAT16, whatever the "FAT32" label says; a
+         * "FAT32" volume with too few clusters (e.g. 1 GB with 32 KB clusters)
+         * is rejected by FatFs and by the Zynq BootROM */
+        {
+            DWORD rsv = sector[14] | (sector[15] << 8);
+            DWORD fatsz = sector[36] | (sector[37] << 8) | (sector[38] << 16) | ((DWORD)sector[39] << 24);
+            DWORD total = sector[32] | (sector[33] << 8) | (sector[34] << 16) | ((DWORD)sector[35] << 24);
+            DWORD spc = sector[13] ? sector[13] : 1;
+            DWORD clusters = (total - rsv - sector[16] * fatsz) / spc;
+            xil_printf("  clusters %u: %s\r\n", (unsigned)clusters,
+                       clusters < 65525u
+                       ? "too few for FAT32 (< 65525) -> reformat with smaller clusters (4 KB) or as FAT16"
+                       : "valid FAT32 cluster count");
+        }
+    }
+}
 
 /* Read image `index` of test_batch.bin into `record` (label + pixels). */
 static int load_record(int index)
@@ -175,11 +239,22 @@ int main(void)
     vela_leds(0);
     vela_text_fill(vela_disp_mem(), VELA_BLACK);
 
-    if (f_mount(&fs, "0:/", 1) != FR_OK || f_open(&dataset, DATASET_FILE, FA_READ) != FR_OK) {
-        xil_printf("ERROR: cannot open %s on the SD card\r\n", DATASET_FILE);
-        show_text("NO SD", "CARD", "", 0);
-        for (;;)
-            ;
+    {
+        FRESULT mount = f_mount(&fs, "0:/", 1);
+        FRESULT open = (mount == FR_OK) ? f_open(&dataset, DATASET_FILE, FA_READ) : FR_OK;
+        if (mount != FR_OK || open != FR_OK) {
+            /* FatFs codes: 3 FR_NOT_READY (card not detected / not answering),
+             * 13 FR_NO_FILESYSTEM (no FAT16/FAT32 volume: exFAT, no partition
+             * table...), 4 FR_NO_FILE (file not at the root of the card) */
+            xil_printf("ERROR: SD card: f_mount = %d, f_open(%s) = %d\r\n",
+                       (int)mount, DATASET_FILE, (int)open);
+            if (mount == FR_NO_FILESYSTEM)
+                sd_diagnose();
+            show_text("NO SD", mount != FR_OK ? "MOUNT" : "FILE",
+                      "", mount != FR_OK ? (int)mount : (int)open);
+            for (;;)
+                ;
+        }
     }
 
     validation();
