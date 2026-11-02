@@ -6,10 +6,12 @@
 #   - C++ double CNN reference (g++), ARM portable code on the host (gcc)
 #   - generated files up to date (diagrams, golden_ref.h)
 #
+#   - fixed-point CNN (ap_fixed) bit-exact vs its model, with the open-source
+#     ap_fixed headers of Xilinx (HLS_arbitrary_Precision_Types, Apache-2.0),
+#     pinned to one commit and given to the tests through VITIS_INCLUDE
+#
 # Not run here (licensed AMD tools, local only): Vivado synthesis and
 # implementation, Vitis HLS, Vitis software build, on-board validation.
-# The ap_fixed tests (test_hls_cnn_hw.py) are skipped: ap_fixed.h comes
-# with Vitis (VITIS_INCLUDE).
 
 name: tests
 
@@ -17,6 +19,11 @@ on:
   push:
     branches: [main]
   pull_request:
+
+env:
+  # Xilinx/HLS_arbitrary_Precision_Types, pinned commit (2019-03-19)
+  AP_TYPES_REPO: https://github.com/Xilinx/HLS_arbitrary_Precision_Types.git
+  AP_TYPES_SHA: 200a9aecaadf471592558540dc5a88256cbf880f
 
 jobs:
   tests:
@@ -37,6 +44,14 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+
+      - name: Fetch the ap_fixed headers (pinned commit)
+        run: |
+          git init -q "$RUNNER_TEMP/ap_types"
+          git -C "$RUNNER_TEMP/ap_types" fetch -q --depth 1 "$AP_TYPES_REPO" "$AP_TYPES_SHA"
+          git -C "$RUNNER_TEMP/ap_types" checkout -q FETCH_HEAD
+          test -f "$RUNNER_TEMP/ap_types/include/ap_fixed.h"
+          echo "VITIS_INCLUDE=$RUNNER_TEMP/ap_types/include" >> "$GITHUB_ENV"
 
       - name: Tool versions
         run: |

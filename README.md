@@ -9,8 +9,9 @@ Results displayed live on a Pmod OLED RGB (SSD1331, 96x64px).
 
 Continuous integration (GitHub Actions) runs `make test` on every push and pull
 request: Python models, RTL co-simulation (Icarus) and lint (Verilator), C++
-reference, host tests of the ARM code. Vivado, Vitis HLS and the board
-validation need the AMD tools and run locally.
+reference, fixed-point CNN (with the open-source `ap_fixed` headers of Xilinx),
+host tests of the ARM code. Vivado, Vitis HLS and the board validation need the
+AMD tools and run locally.
 
 Two operating modes, selectable via on-board switches and buttons:
 
