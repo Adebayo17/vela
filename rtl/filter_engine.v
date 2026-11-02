@@ -18,7 +18,10 @@
 // by the ARM): the address generator cannot produce them.
 //
 // Memories: BRAM controller conventions (byte address = word index * 4),
-// read latency 1 cycle. The source is read one word per cycle without
+// read latency 1 cycle. The source word is registered once (src_q) before
+// the filters: the BRAM output is not registered (latency 1), and its
+// clock-to-out plus the grayscale adders missed 100 MHz by 0.74 ns in the
+// complete design. The source is read one word per cycle without
 // stopping: the 3x3 filters drop ready_in only during their end-of-frame
 // flush, after the last pixel (VELA-TN-003 §6.4), and their last output comes
 // after that flush. Only the selected path receives pixels, so when done
@@ -31,7 +34,7 @@
 // busy and stays set until the next start.
 //
 // Duration: SRC_WIDTH * SRC_HEIGHT cycles + pipeline latency
-// (64 x 64: 4 096 + at most SRC_WIDTH + 8 cycles, ~41 us at 100 MHz).
+// (64 x 64: 4 096 + at most SRC_WIDTH + 9 cycles, ~41 us at 100 MHz).
 //
 // Bit-exact reference model: verif/models/pipeline_hw.py::filter_frame
 // Verified by: verif/tests/test_rtl_filter_engine.py
@@ -84,6 +87,8 @@ module filter_engine #(
     reg  [2:0]  mode_r;         // path of the current image
     reg  [15:0] rd_idx;         // next source word to read
     reg         rd_valid;       // src_dout holds a pixel this cycle
+    reg  [23:0] src_q;          // registered source pixel (RGB888)
+    reg         pix_valid;      // src_q holds a pixel this cycle
     reg  [15:0] wr_idx;         // output pixels written so far
     reg  [15:0] wr_x;           // column of the next output pixel
     reg  [15:0] row_base;       // display word index of the current row
@@ -94,16 +99,16 @@ module filter_engine #(
     assign src_en   = running & (rd_idx < N_PIXELS);
     assign src_addr = {14'd0, rd_idx, 2'b00};
 
-    wire [7:0] r = src_dout[23:16];
-    wire [7:0] g = src_dout[15:8];
-    wire [7:0] b = src_dout[7:0];
+    wire [7:0] r = src_q[23:16];
+    wire [7:0] g = src_q[15:8];
+    wire [7:0] b = src_q[7:0];
 
     // ── Filter paths: only the selected one receives pixels ────────────────
 
     wire gray_path = (mode_r == M_GRAY) | (mode_r == M_THRESH) | (mode_r == M_SOBEL);
-    wire gray_vin  = rd_valid & gray_path;
-    wire gauss_vin = rd_valid & (mode_r == M_GAUSS);
-    wire med_vin   = rd_valid & (mode_r == M_MEDIAN);
+    wire gray_vin  = pix_valid & gray_path;
+    wire gauss_vin = pix_valid & (mode_r == M_GAUSS);
+    wire med_vin   = pix_valid & (mode_r == M_MEDIAN);
 
     wire        gray_vout;
     wire [7:0]  gray_y;
@@ -221,7 +226,7 @@ module filter_engine #(
                 out_px    = {med_px[0][7:3], med_px[1][7:2], med_px[2][7:3]};
             end
             default: begin                                      // copy (0, 6, 7)
-                out_valid = rd_valid;
+                out_valid = pix_valid;
                 out_px    = {r[7:3], g[7:2], b[7:3]};
             end
         endcase
@@ -238,6 +243,8 @@ module filter_engine #(
             mode_r    <= M_COPY;
             rd_idx    <= 16'd0;
             rd_valid  <= 1'b0;
+            src_q     <= 24'd0;
+            pix_valid <= 1'b0;
             wr_idx    <= 16'd0;
             wr_x      <= 16'd0;
             row_base  <= 16'd0;
@@ -247,7 +254,10 @@ module filter_engine #(
         end else begin
             start_d1 <= start;
             dst_we   <= 1'b0;
-            rd_valid <= src_en;
+            rd_valid  <= src_en;
+            pix_valid <= rd_valid;
+            if (rd_valid)
+                src_q <= src_dout[23:0];
 
             // Start: mode sampled now (6-7 select no filter path and fall in
             // the copy case); the first read is issued next cycle, once

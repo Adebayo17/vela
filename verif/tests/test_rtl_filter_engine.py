@@ -76,7 +76,7 @@ class TestFilterEngineRtl:
         img = np.repeat(np.repeat(random_rgb(32, 32, seed=mode), 2, axis=1), 2, axis=2)   # ×2
         mem, cycles = simulate(img, mode, tmp_path, disp_width=96)
         check_display(mem, img, mode)
-        assert cycles <= 64 * 64 + 64 + 8 + 4, cycles     # TN007 §6.2: ~41 us
+        assert cycles <= 64 * 64 + 64 + 9 + 4, cycles     # TN007 §6.2: ~41 us
 
     @requirement("VELA-FR-011")
     @pytest.mark.parametrize("mode1,mode2", [(0, 4), (4, 0), (3, 5), (5, 3), (2, 2),
@@ -102,7 +102,7 @@ class TestFilterEngineRtl:
     @requirement("VELA-FR-011")
     @pytest.mark.parametrize("mode", [0, 4])
     def test_duration(self, tmp_path, mode):
-        """Durée = W·H cycles + latence du chemin (≤ W + 8), pas de cycle perdu."""
+        """Durée = W·H cycles + latence du chemin (≤ W + 9), pas de cycle perdu."""
         img = random_rgb(6, 8, seed=60)
         _, cycles = simulate(img, mode, tmp_path)
-        assert 8 * 6 <= cycles <= 8 * 6 + 8 + 8 + 4, cycles
+        assert 8 * 6 <= cycles <= 8 * 6 + 8 + 9 + 4, cycles

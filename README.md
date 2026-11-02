@@ -155,6 +155,8 @@ vela/
 │   ├── traceability_scanner.py # Requirements <-> tests matrix (make trace)
 │   ├── gen_weights_header.py   # CNN weights -> C++ header (make hls-weights)
 │   ├── gen_diagrams.py         # SVG diagrams of docs/diagrams (make diagrams)
+│   ├── fpga.tcl                # Phase 3: Vivado project, block design, bitstream, XSA (make fpga)
+│   ├── fpga_bd_svg.tcl         # Phase 3: block design schematic -> docs/diagrams/vela_bd.svg
 │   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
 │   ├── gen_hls_tb_data.py      # Stimuli + expected results of the Vitis HLS testbench
 │   ├── hls.tcl                 # Vitis HLS flow: C-sim, synthesis, C/RTL co-sim, export
@@ -174,6 +176,8 @@ vela/
 │       ├── TN005.md            # Technical note: CNN accelerator IP (architecture, AXI4-Lite map, results)
 │       ├── TN006.md            # Visual guide: HW methodology, platform, CNN inference chain (FR)
 │       └── TN007.md            # FPGA integration: architecture, memories, display zones, software
+├── constraints/
+│   └── vela_arty_z7_20.xdc     # Phase 3 pins (Pmod OLED on JA, buttons, switches, LEDs)
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
@@ -324,7 +328,7 @@ make trace
 ### Phase 3 — FPGA integration (Vivado 2024.2)
 - [x] Integration specification (TN007): source / display BRAMs, one writer per display zone, AXI GPIO control
 - [x] RTL `filter_engine` (gaussian / median in colour), `display_reader`, `vela_pl`: bit-exact co-simulation, full system test with SPI decoding, 100 MHz OOC (all RTL: 3.5 % LUT, 0 DSP)
-- [ ] Block design: Zynq PS + CNN IP + filter IPs + OLED controller
+- [x] Block design by script (`make fpga-bd`, `make fpga`): Zynq PS + CNN IP + AXI GPIO + 2 BRAMs + `vela_pl`; bitstream + XSA; 10.2 % LUT, 38 % BRAM, 10 % DSP, WNS +0.306 ns at 100 MHz (TN007 §12)
 - [ ] Button/switch debounce (~10ms) + mode FSM (in software, TN007 §13)
 - [ ] ARM bare-metal application (SD card read, filter/CNN dispatch, OLED update)
 - [ ] Bitstream generation and on-board validation

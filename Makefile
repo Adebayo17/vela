@@ -159,6 +159,34 @@ synth:
 	$(PYTHON) tools/synth_summary.py build/synth
 
 
+# ─── FPGA (phase 3) ──────────────────────────────────────────────────────────
+# Projet Vivado, block design, bitstream et XSA recréés par tools/fpga.tcl
+# (VELA-TN-007). L'IP CNN vient de make hls-export (build/hls/cnn_hw_ip.zip).
+#   make fpga-bd   block design validé + docs/diagrams/vela_bd.svg (~2 min)
+#   make fpga      + synthèse, implémentation, bitstream, XSA (build/fpga/)
+
+fpga-ip:
+	@test -f build/hls/cnn_hw_ip.zip || (echo "build/hls/cnn_hw_ip.zip manquant : make hls-export"; exit 1)
+	rm -rf build/ip/cnn_hw && mkdir -p build/ip/cnn_hw
+	cd build/ip/cnn_hw && unzip -q ../../hls/cnn_hw_ip.zip
+
+fpga-bd: fpga-ip
+	cd build && $(LIMITED) vivado -mode batch -nojournal -nolog \
+		-source ../tools/fpga.tcl -tclargs fpga bd > fpga_bd.log 2>&1 \
+		|| (tail -40 fpga_bd.log; exit 1)
+	@grep "^CHECK\|^STAGE" build/fpga_bd.log
+	cd build && $(LIMITED) xvfb-run -a vivado -mode gui -nojournal -nolog \
+		-source ../tools/fpga_bd_svg.tcl -tclargs fpga > fpga_bd_svg.log 2>&1 \
+		|| (tail -20 fpga_bd_svg.log; exit 1)
+	@grep "^STAGE" build/fpga_bd_svg.log
+
+fpga: fpga-ip
+	cd build && $(LIMITED) vivado -mode batch -nojournal -nolog \
+		-source ../tools/fpga.tcl -tclargs fpga all > fpga.log 2>&1 \
+		|| (tail -40 fpga.log; exit 1)
+	@grep "^CHECK\|^SUMMARY\|^STAGE" build/fpga.log
+
+
 # ─── Documentation ───────────────────────────────────────────────────────────
 # Schémas SVG de docs/diagrams (certains animés), générés par script
 
