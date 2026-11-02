@@ -20,6 +20,8 @@
 // Part of VELA — Vision Edge Learning Accelerator
 // Phase 2a: Verilog RTL image filters
 
+`timescale 1ns / 1ps
+
 module median_filter #(
     parameter IMG_WIDTH  = 96,
     parameter IMG_HEIGHT = 64

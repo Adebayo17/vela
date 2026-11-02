@@ -11,6 +11,10 @@
 | VELA-FR-007 | Filtres image (grayscale, sobel, gaussian, median, threshold)                |
 | VELA-FR-008 | RTL des filtres bit-exact vs modèle entier, < 1 LSB vs golden model flottant |
 | VELA-FR-009 | Affichage OLED : init SSD1331 puis pixels RGB565 (octet haut d'abord) en SPI mode 0 à 6,25 MHz |
+| VELA-FR-010 | Deux modes choisis par SW0 : classification CNN des images de la carte SD (classe et probabilité sur l'OLED) et filtres d'image (filtre choisi par les boutons) |
+| VELA-FR-011 | `filter_engine` écrit dans la zone image de la mémoire d'affichage, pour chaque mode, la conversion RGB565 de la sortie du modèle entier (gaussian et median en couleur, canal par canal), bit-exact |
+| VELA-FR-012 | `display_reader` envoie la mémoire d'affichage à l'OLED en ordre raster, en continu, sans perdre ni dupliquer de pixel |
+| VELA-FR-013 | La zone image (colonnes 0-63) de la mémoire d'affichage n'est écrite que par `filter_engine`, la zone texte (colonnes 64-95) que par l'ARM (VELA-TN-007 §5.1) |
 
 ## Non-functional requirements
 
@@ -49,3 +53,13 @@ Justification des seuils (budget initial, révisable après la première synthè
 - **NFR-009** : 27 846 paramètres ≈ 54 Ko en 16 bits, soit ≈ 13 BRAM 36 Kb ; la
   moitié du FPGA laisse la place aux filtres (≈ 1,4 % des LUT), au chemin
   d'affichage, à une mémoire d'image et à l'interconnexion AXI avec le PS.
+
+### FPGA integration (Phase 3, VELA-TN-007)
+
+| ID           | Description                                                                                       | Vérification                          |
+| ------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| VELA-NFR-011 | Le design complet (block design) respecte le timing à 100 MHz après implémentation : WNS ≥ 0, WHS ≥ 0 | Rapport de timing Vivado du design complet |
+| VELA-NFR-012 | Sur la carte, la classe du CNN est celle du golden model sur ≥ 9 des 10 premières images de test  | Mode de validation au démarrage (console) |
+
+Depuis la phase 3, VELA-NFR-004 est mesurée sur `filter_engine`, qui contient
+tous les filtres réellement instanciés (gaussian et median ×3 pour la couleur).

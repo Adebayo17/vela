@@ -7,7 +7,10 @@ writes build/synth/summary.md and exits with code 1 if a requirement fails.
     NFR-002 : every module WNS >= 0 and WHS >= 0 at 100 MHz
               (WHS between internal registers; port hold WHS_IO is shown for
               information only, see tools/synth.tcl)
-    NFR-004 : filters use no DSP and, together, <= 10 % of LUTs and FFs
+    NFR-004 : filters use no DSP and, together, <= 10 % of LUTs and FFs;
+              measured on filter_engine when present (it instantiates every
+              filter actually used: gaussian and median x 3, VELA-TN-007 §6.2),
+              else on the sum of the individual filter modules
 
 Usage:
     python tools/synth_summary.py [build/synth]
@@ -85,7 +88,15 @@ def main(synth_dir):
                    f"worst WNS {worst['wns']:+.3f} ns ({worst['name']})"))
 
     present = [f for f in FILTERS if f in by_name]
-    if len(present) == len(FILTERS):
+    if "filter_engine" in by_name:
+        eng = by_name["filter_engine"]
+        res_ok = (eng["dsp"] == 0 and eng["lut"] <= BUDGET * DEVICE["lut"]
+                  and eng["ff"] <= BUDGET * DEVICE["ff"])
+        checks.append(("VELA-NFR-004", res_ok,
+                       f"filter_engine (all filters as instantiated): {eng['lut']:.0f} LUT "
+                       f"({100 * eng['lut'] / DEVICE['lut']:.1f} %), {eng['ff']:.0f} FF "
+                       f"({100 * eng['ff'] / DEVICE['ff']:.1f} %), {eng['dsp']:.0f} DSP"))
+    elif len(present) == len(FILTERS):
         lut = sum(by_name[f]["lut"] for f in FILTERS)
         ff = sum(by_name[f]["ff"] for f in FILTERS)
         dsp = sum(by_name[f]["dsp"] for f in FILTERS)

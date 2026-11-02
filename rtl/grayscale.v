@@ -11,6 +11,8 @@
 // Part of VELA — Vision Edge Learning Accelerator
 // Phase 2a: Verilog RTL image filters
 
+`timescale 1ns / 1ps
+
 module grayscale (
     input  wire        clk,
     input  wire        rst_n,

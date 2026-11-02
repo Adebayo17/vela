@@ -107,7 +107,7 @@ vela/
 │       ├── conftest.py         # Fixtures (data paths, weights, synthetic images)
 │       ├── test_cnn.py         # CNN unit + system tests
 │       └── test_filters.py     # Filter unit tests
-├── rtl/                        # Phase 2a — Synthesizable Verilog only (filters + display)
+├── rtl/                        # Phases 2a + 3 — Synthesizable Verilog-2001 only
 │   ├── grayscale.v             # RGB to grayscale conversion
 │   ├── sobel_filter.v          # Sobel edge detection (3x3)
 │   ├── gaussian_filter.v       # Gaussian blur (3x3)
@@ -115,7 +115,10 @@ vela/
 │   ├── threshold.v             # Binary threshold
 │   ├── window3x3.v             # 3x3 sliding window (line buffers) shared by 3x3 filters
 │   ├── oled_controller.v       # SSD1331 OLED display driver
-│   └── spi_master.v            # SPI master for OLED communication
+│   ├── spi_master.v            # SPI master for OLED communication
+│   ├── filter_engine.v         # Phase 3: source BRAM -> filter (6 modes) -> display BRAM image zone
+│   ├── display_reader.v        # Phase 3: display BRAM -> AXI-Stream pixels -> oled_controller
+│   └── vela_pl.v               # Phase 3: PL top (block design module reference)
 ├── verif/                      # RTL verification (co-simulation vs bit-exact models)
 │   ├── models/
 │   │   ├── filters_hw.py       # Bit-exact integer models of the RTL filters
@@ -169,7 +172,8 @@ vela/
 │       ├── TN003.md            # Technical note: RTL module specification (ports, latency, handshake)
 │       ├── TN004.md            # Technical note: CNN fixed-point sizing (ranges, ap_fixed types)
 │       ├── TN005.md            # Technical note: CNN accelerator IP (architecture, AXI4-Lite map, results)
-│       └── TN006.md            # Visual guide: HW methodology, platform, CNN inference chain (FR)
+│       ├── TN006.md            # Visual guide: HW methodology, platform, CNN inference chain (FR)
+│       └── TN007.md            # FPGA integration: architecture, memories, display zones, software
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
@@ -318,8 +322,10 @@ make trace
 - [x] Export CNN IP to Vivado: AXI4-Lite interface, `build/hls/cnn_hw_ip.zip`; C/RTL co-sim bit-exact, 5.98 ms; OOC implementation 5 % LUT, 29 % BRAM, 10 % DSP, WNS +2.137 ns at 100 MHz (TN005)
 
 ### Phase 3 — FPGA integration (Vivado 2024.2)
+- [x] Integration specification (TN007): source / display BRAMs, one writer per display zone, AXI GPIO control
+- [x] RTL `filter_engine` (gaussian / median in colour), `display_reader`, `vela_pl`: bit-exact co-simulation, full system test with SPI decoding, 100 MHz OOC (all RTL: 3.5 % LUT, 0 DSP)
 - [ ] Block design: Zynq PS + CNN IP + filter IPs + OLED controller
-- [ ] Button/switch debounce (~10ms) + mode FSM
+- [ ] Button/switch debounce (~10ms) + mode FSM (in software, TN007 §13)
 - [ ] ARM bare-metal application (SD card read, filter/CNN dispatch, OLED update)
 - [ ] Bitstream generation and on-board validation
 - [ ] Target: FPGA result matches Python on >= 9/10 test images

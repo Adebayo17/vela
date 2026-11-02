@@ -8,11 +8,13 @@ received by oled_controller:
     original  : RGB                                  -> RGB565
     grayscale : RGB -> grayscale                     -> gray RGB565
     threshold : RGB -> grayscale -> threshold        -> gray RGB565
-    gaussian  : RGB -> grayscale -> gaussian_filter  -> gray RGB565
+    gaussian  : R, G, B -> gaussian_filter (×3)      -> colour RGB565
     sobel     : RGB -> grayscale -> sobel_filter     -> gray RGB565
-    median    : RGB -> grayscale -> median_filter    -> gray RGB565
+    median    : R, G, B -> median_filter (×3)        -> colour RGB565
 
-The 3x3 RTL filters process one 8-bit channel, hence the grayscale stage.
+The 3x3 RTL filters process one 8-bit channel: sobel and threshold work on
+the luminance (grayscale stage first), gaussian and median are applied to
+each channel, as in python/filters.py (VELA-TN-007 §6.2, rtl/filter_engine.v).
 Input images are raw 8-bit pixels (as read from the SD card), not the
 normalized images used by the CNN.
 
@@ -27,6 +29,10 @@ from filters_hw import gaussian_u8, grayscale_u8, median_u8, sobel_u8, threshold
 # REQ: VELA-FR-009
 
 FILTERS = ("original", "grayscale", "sobel", "gaussian", "median", "threshold")
+
+# Mode numbers of rtl/filter_engine.v (VELA-TN-007 §6.2); 6 and 7 behave as copy
+ENGINE_MODES = {0: "original", 1: "grayscale", 2: "threshold", 3: "gaussian",
+                4: "sobel", 5: "median", 6: "original", 7: "original"}
 
 
 def rgb888_to_rgb565(image):
@@ -88,13 +94,14 @@ def filter_frame(image, name, threshold=128, mag_shift=2):
         raise ValueError(f"unknown filter {name!r}, expected one of {FILTERS}")
     if name == "original":
         return rgb888_to_rgb565(image)
+    if name in ("gaussian", "median"):
+        stage = gaussian_u8 if name == "gaussian" else median_u8
+        return rgb888_to_rgb565(np.concatenate([stage(image[c:c + 1]) for c in range(3)]))
 
     gray = grayscale_u8(image)
     stage = {
         "grayscale": lambda y: y,
         "threshold": lambda y: threshold_u8(y, threshold),
-        "gaussian":  gaussian_u8,
         "sobel":     lambda y: sobel_u8(y, mag_shift),
-        "median":    median_u8,
     }[name]
     return gray_to_rgb565(stage(gray))

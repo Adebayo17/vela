@@ -38,6 +38,9 @@ set modules {
     median_filter    {median_filter.v window3x3.v}
     spi_master       {spi_master.v}
     oled_controller  {oled_controller.v spi_master.v}
+    display_reader   {display_reader.v}
+    filter_engine    {filter_engine.v grayscale.v threshold.v sobel_filter.v gaussian_filter.v median_filter.v window3x3.v}
+    vela_pl          {vela_pl.v filter_engine.v display_reader.v oled_controller.v spi_master.v grayscale.v threshold.v sobel_filter.v gaussian_filter.v median_filter.v window3x3.v}
 }
 
 # Slack of the first path of a list, or NA when there is no such path

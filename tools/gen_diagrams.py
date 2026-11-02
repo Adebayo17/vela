@@ -253,109 +253,121 @@ def hw_methodology():
 # ─── Prototyping platform (SEI slide 48) adapted to VELA ─────────────────────
 
 def vela_platform():
-    W, H = 1140, 640
-    b = [text(30, 36, "Plateforme de prototypage VELA (cible de la phase 3)", 20, "start", "bold"),
+    W, H = 1140, 712
+    done_f, done_s, _ = STATUS["done"]
+    ph_f, ph_s, _ = STATUS["phase3"]
+    fu_f, fu_s, _ = STATUS["future"]
+    dashed = 'stroke-dasharray="5 3"'
+    b = [text(30, 36, "Plateforme de prototypage VELA (phase 3, TN007)", 20, "start", "bold"),
          text(30, 60, "Arty Z7-20 : Zynq XC7Z020. Blocs pleins = existants et vérifiés ; "
               "pointillés = à concevoir en phase 3 ou plus tard.", 13, "start", cls="muted")]
     # Zynq outline
-    b.append(rect(150, 80, 830, 520, "#fafbfb", INK, 2, 12))
+    b.append(rect(150, 80, 830, 500, "#fafbfb", INK, 2, 12))
     b.append(text(965, 104, "Zynq XC7Z020", 14, "end", "bold"))
     # PS
     b.append(rect(170, 96, 560, 92, "#eef3f8", "#3b6fd1", 1.5, 8))
     b.append(text(190, 120, "Processing System (PS)", 13, "start", "bold", fill="#3b6fd1"))
-    b.append(rect(190, 132, 170, 44, PAPER, INK, 1.2, 6))
-    b.append(text(275, 152, "ARM Cortex-A9", 13, weight="bold"))
-    b.append(text(275, 168, "bare-metal, 100 MHz PL", 10.5, cls="muted"))
-    b.append(rect(380, 132, 150, 44, PAPER, INK, 1.2, 6))
-    b.append(text(455, 152, "SD / GPIO", 13, weight="bold"))
-    b.append(text(455, 168, "images, BTN, SW, LED", 10.5, cls="muted"))
-    b.append(rect(550, 132, 160, 44, PAPER, INK, 1.2, 6))
-    b.append(text(630, 152, "FCLK_CLK0", 13, weight="bold"))
-    b.append(text(630, 168, "100 MHz (NFR-001)", 10.5, cls="muted"))
+    for x, w, title, sub in ((190, 170, "ARM Cortex-A9", "prétraitement, softmax, texte"),
+                             (380, 150, "SD0 · UART", "images, console"),
+                             (550, 160, "FCLK_CLK0", "100 MHz (NFR-001)")):
+        b.append(rect(x, 132, w, 44, PAPER, INK, 1.2, 6))
+        b.append(text(x + w / 2, 152, title, 13, weight="bold"))
+        b.append(text(x + w / 2, 168, sub, 10.5, cls="muted"))
     # AXI bus
     b.append(rect(170, 208, 790, 34, "#f3efe9", ACCENT, 1.5, 17))
-    b.append(text(565, 230, "Bus AXI4-Lite (GP0) : interconnexion + décodage d'adresses",
+    b.append(text(565, 230, "M_AXI_GP0 → SmartConnect (AXI4-Lite) : décodage d'adresses, 5 esclaves",
                   13, weight="bold", fill=ACCENT))
     b.append(line(275, 176, 275, 206, ACCENT, 2, False))
-    # CNN IP
-    done_f, done_s, _ = STATUS["done"]
-    b.append(rect(180, 280, 250, 150, done_f, done_s, 1.8, 10))
-    b.append(text(305, 304, "IP CNN (Vitis HLS)", 14, weight="bold"))
-    for i, s in enumerate(["AXI4-Lite : image @0x1000,", "classe @0x10, logits @0x20",
-                           "8 MAC/cycle, conv+ReLU+pool", "fusionnés, 5,98 ms / image",
-                           "22 DSP · 41 BRAM · 5 % LUT"]):
-        b.append(text(305, 326 + i * 18, s, 11.5))
-    b.append(line(305, 242, 305, 278, ACCENT, 2, "A"))
-    # Filter chain
-    b.append(rect(470, 280, 490, 150, "#fbfbfb", INK, 1.2, 10, 'stroke-dasharray="6 4"'))
-    b.append(text(715, 302, "Chaîne de filtres (RTL Verilog)", 14, weight="bold"))
-    ph_f, ph_s, _ = STATUS["phase3"]
-    b.append(rect(485, 318, 90, 52, ph_f, ph_s, 1.4, 6, 'stroke-dasharray="5 3"'))
-    b.append(text(530, 340, "SRAM", 12, weight="bold"))
-    b.append(text(530, 356, "image source", 10.5, cls="muted"))
-    b.append(rect(595, 318, 95, 52, done_f, done_s, 1.4, 6))
-    b.append(text(642, 340, "grayscale", 12, weight="bold"))
-    b.append(text(642, 356, "1 pixel/cycle", 10.5, cls="muted"))
-    b.append(rect(710, 318, 120, 52, done_f, done_s, 1.4, 6))
-    b.append(text(770, 336, "threshold / gaussian", 10.5, weight="bold"))
-    b.append(text(770, 351, "sobel / median", 10.5, weight="bold"))
-    b.append(text(770, 365, "window3x3", 10, cls="muted"))
-    b.append(rect(850, 318, 95, 52, ph_f, ph_s, 1.4, 6, 'stroke-dasharray="5 3"'))
-    b.append(text(897, 340, "→ RGB565", 12, weight="bold"))
-    b.append(text(897, 356, "conversion", 10.5, cls="muted"))
-    for x1, x2 in ((575, 593), (690, 708), (830, 848)):
-        b.append(line(x1, 344, x2, 344, INK, 1.6))
-    b.append(text(715, 392, "SW0 : mode filtres / CNN · BTN2/BTN3 : filtre précédent / suivant",
-                  11, cls="muted"))
-    b.append(text(715, 410, "pas de contre-pression en sortie → mémoire d'image (TN003 §11)",
-                  11, cls="muted"))
-    b.append(line(530, 242, 530, 316, ACCENT, 2, "A"))
-    # Display path
-    b.append(rect(560, 460, 160, 60, ph_f, ph_s, 1.4, 8, 'stroke-dasharray="5 3"'))
-    b.append(text(640, 484, "SRAM d'affichage", 12.5, weight="bold"))
-    b.append(text(640, 502, "96x64 RGB565 + texte", 10.5, cls="muted"))
-    b.append(rect(750, 460, 200, 60, done_f, done_s, 1.4, 8))
-    b.append(text(850, 484, "oled_controller", 12.5, weight="bold"))
-    b.append(text(850, 502, "spi_master, 6,25 MHz", 10.5, cls="muted"))
-    b.append(line(897, 370, 897, 400, INK, 1.4, False))
-    b.append(path("M897 430 L897 440 L640 440 L640 458", INK, 1.6))
-    b.append(line(720, 490, 748, 490, INK, 1.6))
-    # The ARM writes the class text into the display memory through the AXI bus
-    b.append(path("M450 242 L450 490 L556 490", ACCENT, 1.6, "A"))
-    b.append(text(462, 470, "ARM : texte", 10.5, "start", fill=ACCENT))
-    b.append(text(462, 484, "« CAT 74% »", 10.5, "start", fill=ACCENT))
-    # External: SD card, OLED, camera, buttons
+    # CNN IP: receives the preprocessed image from the ARM, never reads the BRAMs
+    b.append(rect(170, 270, 230, 130, done_f, done_s, 1.8, 10))
+    b.append(text(285, 293, "IP CNN (Vitis HLS)", 14, weight="bold"))
+    for i, s in enumerate(["reçoit de l'ARM l'image", "prétraitée 24×24 (@0x1000)",
+                           "classe @0x10, logits @0x20", "5,98 ms · 22 DSP · 41 BRAM"]):
+        b.append(text(285, 314 + i * 18, s, 11.5))
+    b.append(line(285, 242, 285, 268, ACCENT, 2, "A"))
+    b.append(text(291, 262, "image 24×24", 10, "start", fill=ACCENT))
+    # AXI GPIO (buttons, switches, LEDs, filter engine control)
+    b.append(rect(170, 430, 230, 66, ph_f, ph_s, 1.4, 8, dashed))
+    b.append(text(285, 452, "AXI GPIO ×2", 12.5, weight="bold"))
+    b.append(text(285, 469, "BTN · SW · LED", 10.5, cls="muted"))
+    b.append(text(285, 484, "start · mode · busy · done", 10.5, cls="muted"))
+    b.append(path("M410 242 L410 452 L402 452", MUTED, 1.4))
+    b.append(line(400, 470, 438, 470, INK, 1.4))
+    # BRAMs (port A: ARM through AXI BRAM controllers, port B: vela_pl)
+    for x, title, sub, addr in ((470, "BRAM source", "64×64 RGB888", "@0x4200_0000"),
+                                (780, "BRAM d'affichage", "image 64×64 | texte 32×64", "@0x4202_0000")):
+        b.append(rect(x, 270, 180, 62, ph_f, ph_s, 1.4, 8, dashed))
+        b.append(text(x + 90, 291, title, 12.5, weight="bold"))
+        b.append(text(x + 90, 307, sub, 10.5, cls="muted"))
+        b.append(text(x + 90, 322, addr, 10, cls="mono muted"))
+    b.append(line(560, 242, 560, 268, ACCENT, 2, "A"))
+    b.append(text(566, 262, "image ×2", 10, "start", fill=ACCENT))
+    b.append(line(870, 242, 870, 268, ACCENT, 2, "A"))
+    b.append(text(864, 262, "texte seul → zone texte", 10, "end", fill=ACCENT))
+    # vela_pl (RTL)
+    b.append(rect(425, 365, 545, 195, "#fbfbfb", INK, 1.2, 10, 'stroke-dasharray="6 4"'))
+    b.append(text(440, 384, "vela_pl (RTL Verilog, module reference)", 12.5, "start", "bold"))
+    b.append(rect(440, 398, 320, 142, ph_f, ph_s, 1.4, 8, dashed))
+    b.append(text(600, 418, "filter_engine", 13, weight="bold"))
+    for i, s in enumerate(["0 copie · 1 grayscale · 2 grayscale → threshold",
+                           "3 gaussian ×3 (R, G, B) · 4 grayscale → sobel",
+                           "5 median ×3 (R, G, B)   puis → RGB565"]):
+        b.append(text(600, 440 + i * 18, s, 11))
+    b.append(text(600, 506, "filtres existants (TN003) instanciés tels quels", 10.5, cls="muted"))
+    b.append(text(600, 522, "image 64×64 en ≈ 41 µs → zone image seule", 10.5, cls="muted"))
+    b.append(rect(780, 398, 180, 52, ph_f, ph_s, 1.4, 8, dashed))
+    b.append(text(870, 420, "display_reader", 12.5, weight="bold"))
+    b.append(text(870, 437, "lecture en boucle", 10.5, cls="muted"))
+    b.append(rect(780, 478, 180, 62, done_f, done_s, 1.4, 8))
+    b.append(text(870, 502, "oled_controller", 12.5, weight="bold"))
+    b.append(text(870, 519, "spi_master, 6,25 MHz", 10.5, cls="muted"))
+    b.append(line(560, 332, 560, 396, INK, 1.6))
+    b.append(path("M740 398 L740 355 L830 355 L830 334", INK, 1.6))
+    b.append(text(836, 350, "écriture", 10, "start", cls="muted"))
+    b.append(line(910, 332, 910, 396, INK, 1.6))
+    b.append(line(870, 450, 870, 476, INK, 1.6))
+    # External: SD card, buttons, OLED, camera
     b.append(rect(20, 110, 110, 60, PAPER, INK, 1.4, 6))
     b.append(text(75, 136, "Carte SD", 13, weight="bold"))
     b.append(text(75, 154, "test_batch.bin", 10.5, cls="mono muted"))
     b.append(line(130, 140, 188, 152, INK, 1.6))
-    b.append(rect(20, 200, 110, 72, PAPER, INK, 1.4, 6))
-    b.append(text(75, 222, "BTN0-3", 12.5, weight="bold"))
-    b.append(text(75, 240, "SW0-1", 12.5, weight="bold"))
-    b.append(text(75, 258, "LED", 12.5, weight="bold"))
-    b.append(path("M130 236 L160 236 L160 160 L378 160", INK, 1.4))
-    b.append(rect(1000, 450, 120, 80, "#1f2a2e", INK, 1.5, 8))
-    b.append(rect(1012, 462, 96, 56, "#2a3a3f", "#3a4a4f", 1, 3))
-    b.append(text(1060, 494, "OLED 96x64", 11, fill=PAPER, weight="bold"))
-    b.append(text(1060, 548, "Pmod OLEDrgb", 11.5, cls="muted"))
-    b.append(text(1060, 563, "SSD1331, connecteur JA", 10.5, cls="muted"))
-    b.append(line(950, 490, 998, 490, INK, 2))
-    fu_f, fu_s, _ = STATUS["future"]
-    b.append(rect(1000, 300, 120, 70, fu_f, fu_s, 1.4, 8, 'stroke-dasharray="6 4"'))
-    b.append(text(1060, 326, "Caméra", 13, weight="bold", fill=MUTED))
-    b.append(text(1060, 344, "ESP32-CAM", 11, cls="muted"))
-    b.append(text(1060, 360, "(SW1, futur)", 10.5, cls="muted"))
-    b.append(path("M1000 335 L962 335", fu_s, 1.6, dash="6 4"))
-    # Animated data flows (dashes moving along the CNN and filter paths)
-    b.append(path("M130 140 L188 152 M275 176 L275 206 M305 242 L305 278", ACCENT, 3.5, False,
-                  dash="2 10", extra='class="flow" opacity="0.85"'))
-    b.append(path("M530 242 L530 316 M575 344 L593 344 M690 344 L708 344 M830 344 L848 344 "
-                  "M897 370 L897 440 L640 440 L640 458 M720 490 L748 490 M950 490 L998 490",
+    b.append(rect(20, 420, 110, 72, PAPER, INK, 1.4, 6))
+    b.append(text(75, 442, "BTN0-3", 12.5, weight="bold"))
+    b.append(text(75, 460, "SW0-1", 12.5, weight="bold"))
+    b.append(text(75, 478, "LED0-3", 12.5, weight="bold"))
+    b.append(line(130, 456, 168, 456, INK, 1.4, False))
+    b.append(rect(1000, 470, 120, 80, "#1f2a2e", INK, 1.5, 8))
+    b.append(rect(1012, 482, 96, 56, "#2a3a3f", "#3a4a4f", 1, 3))
+    b.append(text(1060, 514, "OLED 96x64", 11, fill=PAPER, weight="bold"))
+    b.append(text(1060, 568, "Pmod OLEDrgb", 11.5, cls="muted"))
+    b.append(text(1060, 583, "SSD1331, connecteur JA", 10.5, cls="muted"))
+    b.append(line(960, 510, 998, 510, INK, 2))
+    b.append(rect(1000, 380, 120, 70, fu_f, fu_s, 1.4, 8, 'stroke-dasharray="6 4"'))
+    b.append(text(1060, 406, "Caméra", 13, weight="bold", fill=MUTED))
+    b.append(text(1060, 424, "ESP32-CAM", 11, cls="muted"))
+    b.append(text(1060, 440, "(SW1, futur)", 10.5, cls="muted"))
+    b.append(path("M1000 415 L972 415", fu_s, 1.6, dash="6 4"))
+    # The two modes
+    b.append(rect(20, 596, 1100, 74, ACCENT_SOFT, ACCENT, 1.2, 8))
+    b.append(text(36, 617, "Mode CNN (SW0 = 1) : SD → ARM (crop 24×24, normalisation) → IP CNN → "
+                  "classe → ARM → zone texte ; image ×2 → BRAM source → filter_engine (copie) "
+                  "→ zone image.", 12, "start"))
+    b.append(text(36, 637, "Mode filtres (SW0 = 0) : SD → ARM → BRAM source (image ×2) → "
+                  "filter_engine (filtre) → zone image ; nom du filtre → zone texte. Un seul "
+                  "écrivain par zone.", 12, "start"))
+    b.append(text(36, 657, "×2 : chaque pixel de l'image CIFAR 32×32 devient un carré 2×2 → "
+                  "64×64 à gauche de l'écran 96×64 ; les 32 colonnes de droite servent au texte.",
+                  12, "start", cls="muted"))
+    # Animated data flows: CNN path (copper), filter and display path (green)
+    b.append(path("M130 140 L188 152 M275 176 L275 206 M285 242 L285 268 M870 242 L870 268",
+                  ACCENT, 3.5, False, dash="2 10", extra='class="flow" opacity="0.85"'))
+    b.append(path("M560 242 L560 268 M560 332 L560 396 M740 398 L740 355 L830 355 L830 334 "
+                  "M910 332 L910 396 M870 450 L870 476 M960 510 L998 510",
                   "#3a9d5d", 3.5, False, dash="2 10", extra='class="flow" opacity="0.85"'))
     css = ("@keyframes flow { to { stroke-dashoffset: -48; } }\n"
            "  .flow { animation: flow 1.2s linear infinite; }")
     # Legend
-    yl = 612
+    yl = 694
     for i, (key, cap) in enumerate([("done", "existant, vérifié"),
                                     ("phase3", "à concevoir en phase 3"),
                                     ("future", "extension future")]):

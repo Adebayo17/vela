@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from vela_testing import requirement
 from filters_hw import gaussian_u8, grayscale_u8, median_u8, sobel_u8, threshold_u8
-from pipeline_hw import (FILTERS, filter_frame, gray_to_rgb565, rgb565_to_rgb888,
+from pipeline_hw import (ENGINE_MODES, FILTERS, filter_frame, gray_to_rgb565, rgb565_to_rgb888,
                          rgb888_to_rgb565)
 
 
@@ -67,15 +67,28 @@ class TestFilterFrame:
     @pytest.mark.parametrize("name,stage", [
         ("grayscale", lambda y: y),
         ("threshold", lambda y: threshold_u8(y, 128)),
-        ("gaussian", gaussian_u8),
         ("sobel", sobel_u8),
-        ("median", median_u8),
     ])
     def test_gray_modes_chain(self, name, stage):
-        """Mode filtre = grayscale_u8 -> filtre RTL bit-exact -> RGB565 gris."""
+        """Modes sur la luminance = grayscale_u8 -> filtre RTL bit-exact -> RGB565 gris."""
         img = random_rgb(24, 24, seed=1)
         expected = gray_to_rgb565(stage(grayscale_u8(img)))
         np.testing.assert_array_equal(filter_frame(img, name), expected)
+
+    @requirement("VELA-FR-011")
+    @pytest.mark.parametrize("name,stage", [("gaussian", gaussian_u8), ("median", median_u8)])
+    def test_colour_modes_chain(self, name, stage):
+        """Gaussian et median en couleur (TN007 §6.2) : le filtre RTL sur R, G et B
+        séparément, comme filters.gaussian / filters.median, puis RGB565."""
+        img = random_rgb(24, 24, seed=1)
+        channels = np.concatenate([stage(img[c:c + 1]) for c in range(3)])
+        np.testing.assert_array_equal(filter_frame(img, name), rgb888_to_rgb565(channels))
+
+    @requirement("VELA-FR-011")
+    def test_engine_mode_numbers(self):
+        """Numéros de mode de filter_engine (TN007 §6.2), 6 et 7 = copie."""
+        assert ENGINE_MODES == {0: "original", 1: "grayscale", 2: "threshold", 3: "gaussian",
+                                4: "sobel", 5: "median", 6: "original", 7: "original"}
 
     @requirement("VELA-FR-009")
     def test_original_mode(self):
