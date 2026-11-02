@@ -60,10 +60,15 @@ jobs:
           from pathlib import Path; import hls_sim
           hls_sim.generate_weights(Path("build/probe"))
           PY
-          /usr/bin/time -v timeout 600 g++ -O2 -std=c++14 -isystem "$VITIS_INCLUDE" \
-            -Wno-unknown-pragmas -Wno-unused-label -Ihls -Ibuild/probe/generated \
-            hls/cnn_hw.cpp hls/tb/cnn_hw_main.cpp -o build/probe/cnn_hw_main 2>&1 \
-            | grep -E "error|Elapsed|Maximum resident|Exit status" | head -20
+          free -g
+          for opt in -O0 -O1 -O2; do
+            echo "== g++ $opt"
+            ( ulimit -v 10000000
+              /usr/bin/time -v timeout 300 g++ $opt -std=c++14 -isystem "$VITIS_INCLUDE" \
+                -Wno-unknown-pragmas -Wno-unused-label -Ihls -Ibuild/probe/generated \
+                hls/cnn_hw.cpp hls/tb/cnn_hw_main.cpp -o build/probe/cnn_hw_main ) 2>&1 \
+              | grep -E "error|memory|Elapsed|Maximum resident|Exit status" | head -8 || true
+          done
 
       - name: Tool versions
         run: |
