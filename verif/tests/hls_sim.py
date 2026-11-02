@@ -118,12 +118,19 @@ def run_reference(exe, images, workdir, trace=False):
     return logits, probs, preds, layers
 
 
+# Optimization level of the ap_fixed build. -O2 by default; the CI sets -O1:
+# with the open-source ap_fixed headers (2019), g++ -O2 needs more than the
+# 7 GB of a GitHub runner, -O1 about 1.6 GB. The level does not change the
+# arithmetic (no -ffast-math): the bit-exact tests check it.
+HLS_OPT = os.environ.get("VELA_HLS_OPT", "-O2")
+
+
 def build_hw(workdir):
     """Compile the fixed-point CNN runner (g++ + Vitis ap_fixed headers)."""
     gen_dir = generate_weights(workdir)
     exe = workdir / "cnn_hw_main"
     result = subprocess.run(
-        [GXX, "-O2", "-std=c++14", "-Wall", "-Wextra", "-Werror",
+        [GXX, HLS_OPT, "-std=c++14", "-Wall", "-Wextra", "-Werror",
          "-isystem", str(VITIS_INCLUDE),       # no warnings from the Vitis headers
          # False positive inside the Vitis 2024.2 headers (ap_private.h, member
          # read in clearUnusedBits() after inlining at -O2): -isystem cannot hide
