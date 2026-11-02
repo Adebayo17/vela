@@ -53,6 +53,18 @@ jobs:
           test -f "$RUNNER_TEMP/ap_types/include/ap_fixed.h"
           echo "VITIS_INCLUDE=$RUNNER_TEMP/ap_types/include" >> "$GITHUB_ENV"
 
+      - name: Probe the ap_fixed build (time, memory)
+        run: |
+          python - <<'PY'
+          import sys; sys.path[:0] = ["verif/tests", "python", "verif/models", "tools"]
+          from pathlib import Path; import hls_sim
+          hls_sim.generate_weights(Path("build/probe"))
+          PY
+          /usr/bin/time -v timeout 600 g++ -O2 -std=c++14 -isystem "$VITIS_INCLUDE" \
+            -Wno-unknown-pragmas -Wno-unused-label -Ihls -Ibuild/probe/generated \
+            hls/cnn_hw.cpp hls/tb/cnn_hw_main.cpp -o build/probe/cnn_hw_main 2>&1 \
+            | grep -E "error|Elapsed|Maximum resident|Exit status" | head -20
+
       - name: Tool versions
         run: |
           python --version
