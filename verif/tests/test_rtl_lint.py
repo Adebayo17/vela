@@ -23,7 +23,7 @@ RTL_FILES = sorted(p.name for p in RTL_DIR.glob("*.v"))
 @pytest.mark.parametrize("name", RTL_FILES)
 def test_verilator_lint_clean(name):
     """Lint Verilator -Wall sans avertissement."""
-    result = subprocess.run([VERILATOR, "--lint-only", "-Wall", "--quiet", "-y", str(RTL_DIR),
+    result = subprocess.run([VERILATOR, "--lint-only", "-Wall", "-y", str(RTL_DIR),
                              str(RTL_DIR / name)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 

@@ -1,0 +1,49 @@
+# tests.yml — VELA continuous integration: the fast test suite (make test)
+#
+# Runs on every push to master / v2-simplified and on every pull request:
+#   - Python golden model and bit-exact models (CNN, filters, display path)
+#   - RTL co-simulation with Icarus Verilog, Verilator lint (VELA-NFR-005)
+#   - C++ double CNN reference (g++), ARM portable code on the host (gcc)
+#   - generated files up to date (diagrams, golden_ref.h)
+#
+# Not run here (licensed AMD tools, local only): Vivado synthesis and
+# implementation, Vitis HLS, Vitis software build, on-board validation.
+# The ap_fixed tests (test_hls_cnn_hw.py) are skipped: ap_fixed.h comes
+# with Vitis (VITIS_INCLUDE).
+
+name: tests
+
+on:
+  push:
+    branches: [master, v2-simplified]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install simulators and compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends iverilog verilator g++
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Tool versions
+        run: |
+          python --version
+          iverilog -V 2>&1 | head -1
+          verilator --version
+          g++ --version | head -1
+
+      - name: Fast test suite (make test)
+        run: make test

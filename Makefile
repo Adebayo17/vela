@@ -78,7 +78,7 @@ rtl-waves:
 
 rtl-lint:
 	@for f in $(RTL_SRC); do \
-		echo "lint $$f"; verilator --lint-only -Wall --quiet -y rtl $$f || exit 1; \
+		echo "lint $$f"; verilator --lint-only -Wall -y rtl $$f || exit 1; \
 	done
 
 
