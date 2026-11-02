@@ -7,3 +7,6 @@ docs/requirement/traceability_report.md
 JOURNAL.md
 build/
 hls/generated/
+
+# Claude Code local settings (never versioned)
+.claude/
