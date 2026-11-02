@@ -195,15 +195,15 @@ METHODOLOGY = [
     ("Vérification vs fichiers de référence", "done",
      ["Co-simulation C/RTL (xsim)", "tb_images.bin → RTL → comparé à tb_expected.bin",
       "3/3 bit-exact, latence 5,98 ms"]),
-    ("Émulation avec entrées de référence", "phase3",
-     ["IP sur la carte, images de référence", "chargées en mémoire, sortie comparée",
-      "aux résultats attendus"]),
-    ("Paramétrage du HW par SW", "phase3",
-     ["ARM (PS) ↔ IP en AXI4-Lite (TN005)", "image @0x1000, ap_start, ap_done,",
-      "classe @0x10 : IP prête, logiciel à écrire"]),
-    ("Validation sur émulateur", "phase3",
-     ["Carte SD → ARM (prétraitement)", "→ IP CNN → OLED SSD1331 96x64",
-      "(au lieu de la sortie vidéo HDMI)"]),
+    ("Émulation avec entrées de référence", "done",
+     ["IP CNN sur l'Arty Z7-20, 10 images de test", "classe FPGA comparée au golden model :",
+      "10/10, 0 écart avec le modèle bit-exact"]),
+    ("Paramétrage du HW par SW", "done",
+     ["ARM bare-metal (Vitis 2024.2) : AXI4-Lite", "IP CNN (TN005) + moteur de filtres (GPIO)",
+      "inférence 5,94 ms mesurée sur la carte"]),
+    ("Validation sur émulateur", "done",
+     ["Carte SD → ARM → IP CNN ou filtres", "→ OLED SSD1331 96x64 (au lieu du HDMI)",
+      "SW0 : mode, BTN : image / filtre (TN007)"]),
     ("Système avec entrée/sortie vidéo", "future",
      ["Caméra ESP32-CAM (switch SW1)", "→ filtres / CNN → OLED",
       "flux continu : interface AXI-Stream"]),
@@ -240,11 +240,11 @@ def hw_methodology():
     body.append(path(f"M{x0 + cw} {y4 - ch / 2} C {x0 + cw + gx} {y4 - ch / 2}, "
                      f"{x5 - 50} {y5 + 30}, {x5 - 28} {y5 + 30}", MUTED, 1.5))
     yl = y0 + 4 * (ch + gy) + 6
-    for i, (key, cap) in enumerate([("done", "fait et vérifié"), ("phase3", "phase 3 : intégration"),
+    for i, (key, cap) in enumerate([("done", "fait et vérifié (sur carte pour 5-7)"),
                                     ("future", "extension future")]):
         fill, stroke, label = STATUS[key]
-        body.append(rect(30 + i * 230, yl, 22, 16, fill, stroke, 1.4, 4))
-        body.append(text(60 + i * 230, yl + 13, f"{label} : {cap}", 12, "start", cls="muted"))
+        body.append(rect(30 + i * 330, yl, 22, 16, fill, stroke, 1.4, 4))
+        body.append(text(60 + i * 330, yl + 13, f"{label} : {cap}", 12, "start", cls="muted"))
     css = sequence_css("step", n, n * 2.5, 0.35)
     return svg(x0 * 2 + 2 * cw + gx, yl + 36, "\n".join(body),
                "Étapes de la méthodologie HW appliquées à VELA", css)
@@ -255,12 +255,12 @@ def hw_methodology():
 def vela_platform():
     W, H = 1140, 712
     done_f, done_s, _ = STATUS["done"]
-    ph_f, ph_s, _ = STATUS["phase3"]
+    ph_f, ph_s, _ = STATUS["done"]          # phase 3 blocks: built and validated on the board
     fu_f, fu_s, _ = STATUS["future"]
-    dashed = 'stroke-dasharray="5 3"'
+    dashed = ""
     b = [text(30, 36, "Plateforme de prototypage VELA (phase 3, TN007)", 20, "start", "bold"),
-         text(30, 60, "Arty Z7-20 : Zynq XC7Z020. Blocs pleins = existants et vérifiés ; "
-              "pointillés = à concevoir en phase 3 ou plus tard.", 13, "start", cls="muted")]
+         text(30, 60, "Arty Z7-20 : Zynq XC7Z020. Blocs pleins = réalisés et validés sur la carte "
+              "(CNN 10/10, 5,94 ms) ; pointillés = extension future.", 13, "start", cls="muted")]
     # Zynq outline
     b.append(rect(150, 80, 830, 500, "#fafbfb", INK, 2, 12))
     b.append(text(965, 104, "Zynq XC7Z020", 14, "end", "bold"))
@@ -368,8 +368,7 @@ def vela_platform():
            "  .flow { animation: flow 1.2s linear infinite; }")
     # Legend
     yl = 694
-    for i, (key, cap) in enumerate([("done", "existant, vérifié"),
-                                    ("phase3", "à concevoir en phase 3"),
+    for i, (key, cap) in enumerate([("done", "réalisé, validé sur la carte"),
                                     ("future", "extension future")]):
         fill, stroke, label = STATUS[key]
         b.append(rect(150 + i * 250, yl - 12, 22, 16, fill, stroke, 1.4, 4))

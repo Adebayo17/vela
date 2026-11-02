@@ -340,8 +340,8 @@ make trace
 - [x] Block design by script (`make fpga-bd`, `make fpga`): Zynq PS + CNN IP + AXI GPIO + 2 BRAMs + `vela_pl`; bitstream + XSA; 10.2 % LUT, 38 % BRAM, 10 % DSP, WNS +0.306 ns at 100 MHz (TN007 §12)
 - [x] Button/switch debounce (~10ms) + mode FSM (in software, TN007 §13)
 - [x] ARM bare-metal application (`sw/vela_app`, `make sw`): SD card read (FatFs), preprocessing + CNN IP driver, filter engine, text zone, debounced buttons, start-up validation of 10 images; portable code tested on the host vs Python (`test_sw_host.py`); `BOOT.BIN` for SD boot
-- [ ] Bitstream generation and on-board validation
-- [ ] Target: FPGA result matches Python on >= 9/10 test images
+- [x] Bitstream generation and on-board validation: SD boot (`BOOT.BIN`), CNN 5.94 ms on the board, filter engine 43 us
+- [x] Target: FPGA result matches Python on >= 9/10 test images: **10/10**, and 0 differences with the bit-exact IP model (TN007 §10.4)
 
 ## Design choices
 
