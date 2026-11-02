@@ -180,7 +180,7 @@ def hwc_memory():
                         hl, "Les 3 valeurs d'un pixel sont contiguës.")
 
 
-# ─── HW methodology (SEI slides 9-16) mapped to VELA ─────────────────────────
+# ─── HW methodology steps mapped to VELA ─────────────────────────────────────
 
 METHODOLOGY = [
     ("Référence algorithmique", "done",
@@ -202,7 +202,7 @@ METHODOLOGY = [
      ["ARM bare-metal (Vitis 2024.2) : AXI4-Lite", "IP CNN (TN005) + moteur de filtres (GPIO)",
       "inférence 5,94 ms mesurée sur la carte"]),
     ("Validation sur émulateur", "done",
-     ["Carte SD → ARM → IP CNN ou filtres", "→ OLED SSD1331 96x64 (au lieu du HDMI)",
+     ["Carte SD → ARM → IP CNN ou filtres", "→ OLED SSD1331 96x64 (Pmod, connecteur JA)",
       "SW0 : mode, BTN : image / filtre (TN007)"]),
     ("Système avec entrée/sortie vidéo", "future",
      ["Caméra ESP32-CAM (switch SW1)", "→ filtres / CNN → OLED",
@@ -213,8 +213,8 @@ METHODOLOGY = [
 def hw_methodology():
     cw, ch, gx, gy, x0, y0 = 520, 112, 30, 22, 30, 92
     body = [text(30, 36, "Étapes de la méthodologie HW appliquées à VELA", 20, "start", "bold"),
-            text(30, 62, "D'après le cours SEI « Projet d'intégration des SoC » : chaque étape "
-                 "est validée contre la précédente avant de passer à la suivante.", 13, "start",
+            text(30, 62, "Chaque étape est validée contre la précédente avant de passer à la "
+                 "suivante : une erreur se localise ainsi à une seule étape.", 13, "start",
                  cls="muted")]
     n = len(METHODOLOGY)
     for k, (title, status, lines) in enumerate(METHODOLOGY):
@@ -250,7 +250,7 @@ def hw_methodology():
                "Étapes de la méthodologie HW appliquées à VELA", css)
 
 
-# ─── Prototyping platform (SEI slide 48) adapted to VELA ─────────────────────
+# ─── Prototyping platform of VELA ────────────────────────────────────────────
 
 def vela_platform():
     W, H = 1140, 712
@@ -379,7 +379,7 @@ def vela_platform():
     return svg(W, H, "\n".join(b), "Plateforme de prototypage VELA", css)
 
 
-# ─── CNN data structures (SEI slides 26-37) with the VELA network ────────────
+# ─── CNN data structures with the VELA network ───────────────────────────────
 
 LAYERS = [
     # name, channels, size, caption, op to next

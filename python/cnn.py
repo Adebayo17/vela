@@ -260,7 +260,7 @@ def cnn_forward(image, weights, verbose=False):
     _log("Avant reshape", x)
     # Reshape en ordre canonique (C, H, W) → vecteur colonne-major
     # IMPORTANT : l'ordre doit correspondre aux poids FC appris
-    # Le projet SEI utilise l'ordre HWC (Height-Width-Channel) pour le reshape
+    # Les poids FC ont été appris avec l'ordre HWC (Height-Width-Channel) pour le reshape
     x_hwc = x.transpose(1, 2, 0)   # (C,H,W) → (H,W,C) = (3,3,20)
     vec = x_hwc.flatten()           # 180 éléments
     _log("Vecteur (après reshape)", vec)

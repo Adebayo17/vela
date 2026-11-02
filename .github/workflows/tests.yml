@@ -1,6 +1,6 @@
 # tests.yml — VELA continuous integration: the fast test suite (make test)
 #
-# Runs on every push to master / v2-simplified and on every pull request:
+# Runs on every push to main and on every pull request:
 #   - Python golden model and bit-exact models (CNN, filters, display path)
 #   - RTL co-simulation with Icarus Verilog, Verilator lint (VELA-NFR-005)
 #   - C++ double CNN reference (g++), ARM portable code on the host (gcc)
@@ -15,7 +15,7 @@ name: tests
 
 on:
   push:
-    branches: [master, v2-simplified]
+    branches: [main]
   pull_request:
 
 jobs:
