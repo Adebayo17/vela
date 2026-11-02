@@ -135,7 +135,8 @@ vela/
 │       ├── test_hls_cnn_ref.py # C++ CNN reference vs golden model
 │       ├── test_hls_cnn_hw.py  # ap_fixed CNN vs bit-exact model and golden model
 │       ├── test_cnn_ip_interface.py # PS <-> IP data contract (raw codes, AXI4-Lite packing)
-│       └── test_diagrams.py    # docs/diagrams SVGs are valid XML and up to date
+│       ├── test_diagrams.py    # docs/diagrams SVGs are valid XML and up to date
+│       └── test_sw_host.py     # ARM portable C code (gcc) vs Python reference
 ├── hls/                        # Phase 2b — Vitis HLS C++ (CNN only)
 │   ├── cnn_params.h            # CNN dimensions
 │   ├── cnn_ref.h / cnn_ref.cpp # C++ double reference (= python/cnn.py)
@@ -157,6 +158,8 @@ vela/
 │   ├── gen_diagrams.py         # SVG diagrams of docs/diagrams (make diagrams)
 │   ├── fpga.tcl                # Phase 3: Vivado project, block design, bitstream, XSA (make fpga)
 │   ├── fpga_bd_svg.tcl         # Phase 3: block design schematic -> docs/diagrams/vela_bd.svg
+│   ├── sw_build.py             # Phase 3: Vitis platform + application + BOOT.BIN (make sw)
+│   ├── gen_sw_golden.py        # Phase 3: validation table sw/vela_app/src/golden_ref.h (make sw-golden)
 │   ├── cnn_fixed_point_analysis.py # Value ranges + ap_fixed sweep (make cnn-fixed-point)
 │   ├── gen_hls_tb_data.py      # Stimuli + expected results of the Vitis HLS testbench
 │   ├── hls.tcl                 # Vitis HLS flow: C-sim, synthesis, C/RTL co-sim, export
@@ -178,6 +181,12 @@ vela/
 │       └── TN007.md            # FPGA integration: architecture, memories, display zones, software
 ├── constraints/
 │   └── vela_arty_z7_20.xdc     # Phase 3 pins (Pmod OLED on JA, buttons, switches, LEDs)
+├── sw/vela_app/src/            # Phase 3 — ARM bare-metal application (Vitis 2024.2)
+│   ├── main.c                  # SD card, validation mode, modes, debounced buttons
+│   ├── vela_hw.c/.h            # Register access: CNN IP, filter engine, GPIO, timer
+│   ├── vela_image.c/.h         # Portable: preprocessing, packing, softmax, image x2
+│   ├── vela_text.c/.h          # Portable: 5x7 font, text zone only (columns 64-95)
+│   └── golden_ref.h            # Generated: reference classes of the first 10 images
 ├── Makefile                    # Task runner (test, run, coverage, clean)
 └── pytest.ini                  # pytest configuration
 ```
@@ -329,8 +338,8 @@ make trace
 - [x] Integration specification (TN007): source / display BRAMs, one writer per display zone, AXI GPIO control
 - [x] RTL `filter_engine` (gaussian / median in colour), `display_reader`, `vela_pl`: bit-exact co-simulation, full system test with SPI decoding, 100 MHz OOC (all RTL: 3.5 % LUT, 0 DSP)
 - [x] Block design by script (`make fpga-bd`, `make fpga`): Zynq PS + CNN IP + AXI GPIO + 2 BRAMs + `vela_pl`; bitstream + XSA; 10.2 % LUT, 38 % BRAM, 10 % DSP, WNS +0.306 ns at 100 MHz (TN007 §12)
-- [ ] Button/switch debounce (~10ms) + mode FSM (in software, TN007 §13)
-- [ ] ARM bare-metal application (SD card read, filter/CNN dispatch, OLED update)
+- [x] Button/switch debounce (~10ms) + mode FSM (in software, TN007 §13)
+- [x] ARM bare-metal application (`sw/vela_app`, `make sw`): SD card read (FatFs), preprocessing + CNN IP driver, filter engine, text zone, debounced buttons, start-up validation of 10 images; portable code tested on the host vs Python (`test_sw_host.py`); `BOOT.BIN` for SD boot
 - [ ] Bitstream generation and on-board validation
 - [ ] Target: FPGA result matches Python on >= 9/10 test images
 

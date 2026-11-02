@@ -187,6 +187,24 @@ fpga: fpga-ip
 	@grep "^CHECK\|^SUMMARY\|^STAGE" build/fpga.log
 
 
+# ─── Logiciel ARM (phase 3) ──────────────────────────────────────────────────
+# Plateforme Vitis + application bare-metal + BOOT.BIN (tools/sw_build.py)
+# depuis le XSA de make fpga. Table de validation : make sw-golden.
+#   make sw      build/sw/vela_app.elf, build/sw/BOOT.BIN (~5 min)
+
+.PHONY: sw sw-golden fpga fpga-bd fpga-ip diagrams
+
+sw-golden:
+	$(PYTHON) tools/gen_sw_golden.py
+
+sw:
+	@test -f build/fpga/vela.xsa || (echo "build/fpga/vela.xsa manquant : make fpga"; exit 1)
+	$(LIMITED) vitis -s tools/sw_build.py build/fpga/vela.xsa build/vitis build/sw \
+		> build/sw.log 2>&1 || (tail -40 build/sw.log; exit 1)
+	@grep "^SWCHECK" build/sw.log
+	@ls -la build/sw/vela_app.elf build/sw/BOOT.BIN
+
+
 # ─── Documentation ───────────────────────────────────────────────────────────
 # Schémas SVG de docs/diagrams (certains animés), générés par script
 
